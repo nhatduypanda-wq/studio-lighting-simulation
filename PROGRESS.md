@@ -33,9 +33,9 @@ Thứ tự người dùng duyệt: 1 → 2 → 3 (chân dung trước) → 4 (l�
 - [x] 3a. Lưu nhiều bố cục có tên (localStorage), tải lại, xóa
 - [x] 3b. Chia sẻ bố cục qua link (state nén trong #hash)
 4. Không gian + tiện ích
-- [ ] 4a. Sàn: bê tông / gỗ / bóng; phông vải muslin, vinyl
-- [ ] 4b. Kích thước phòng chỉnh được
-- [ ] 4c. Boom/C-stand (kiểu chân: thường / boom / treo trần / tự động)
+- [x] 4a. Sàn: bê tông / gỗ / bóng; phông vải muslin, vinyl
+- [x] 4b. Kích thước phòng chỉnh được
+- [x] 4c. Boom/C-stand (kiểu chân: thường / boom / treo trần / tự động)
 - [ ] 4d. Lều chụp sản phẩm; cucoloris
 - [ ] 4e. Phóng to xem catchlight; minh họa family of angles
 5. Người mẫu

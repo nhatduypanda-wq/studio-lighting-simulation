@@ -1,7 +1,7 @@
 import { t, getLang, setLang } from './i18n.js';
 import {
   LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
-  GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
+  GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, ROOM, ROOMS, FLOORS, MOUNTS, setRoom, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
   APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
   defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA, avoidCamera,
 } from './data.js';
@@ -17,6 +17,7 @@ const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
 
 let state = load();
+setRoom(state.set.room);
 let tab = 'lights';
 let engine = null;
 
@@ -60,7 +61,7 @@ function saveSetup() {
 function loadSetup(entry) {
   const st = normalize(entry.state); if (!st) return;
   st.preset = 'custom'; st.selected = st.items[0]?.id ?? null;
-  state = st; renderChrome(); layout(); commit({ rebuild: true });
+  state = st; setRoom(state.set.room); renderChrome(); layout(); commit({ rebuild: true });
 }
 async function shareSetup() {
   const url = location.origin + location.pathname + '#s=' + encodeState(state);
@@ -110,6 +111,17 @@ function flush() {
   diagram.draw();
   updateReadouts();
 }
+const camMax = () => Math.min(ROOM.w > 7 ? 7 : 4.5, Math.round((ROOM.zMax - 0.4) * 20) / 20);
+const backMax = () => Math.min(ROOM.w > 7 ? 5 : 3.6, Math.round((-ROOM.zMin - 0.2) * 20) / 20);
+// After the room changes size, pull everything back inside the walls.
+function fitRoom() {
+  for (const i of state.items) {
+    i.x = Math.max(-LIMITS.x, Math.min(LIMITS.x, i.x)); i.z = Math.max(LIMITS.zMin, Math.min(LIMITS.zMax, i.z));
+    i.h = Math.min(i.h, ROOM.h - 0.2);
+  }
+  state.camera.dist = Math.min(state.camera.dist, camMax());
+  state.set.backDist = Math.min(state.set.backDist, backMax());
+}
 const touched = () => { state.preset = 'custom'; $('preset').value = 'custom'; };
 const selected = () => state.items.find((i) => i.id === state.selected) || null;
 const lightCount = () => state.items.filter((i) => i.kind === 'light').length;
@@ -143,7 +155,7 @@ function applyPreset(id) {
 function shiftHeights(before) {
   const dy = subjectTarget(state.subject).y - before;
   if (!dy) return;
-  for (const i of state.items) i.h = Math.max(0.2, Math.min(3.0, i.h + dy));
+  for (const i of state.items) i.h = Math.max(0.2, Math.min(ROOM.h - 0.2, i.h + dy));
   state.camera.height = Math.max(0.3, Math.min(2.6, state.camera.height + dy));
 }
 
@@ -250,7 +262,8 @@ function paneLights() {
   const p = polar(item);
   ed.append(slider(t('distance'), Math.min(4.5, p.d), 0.3, 4.5, 0.05, fmtM, chg((v) => { setPolar(item, v, polar(item).a); })));
   ed.append(slider(t('angle'), p.a, -180, 180, 1, fmtDeg, chg((v) => { setPolar(item, Math.max(0.3, polar(item).d), v); })));
-  if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(slider(t('height'), item.h, 0.2, 3.0, 0.05, fmtM, chg((v) => { item.h = v; })));
+  if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(slider(t('height'), Math.min(item.h, ROOM.h - 0.2), 0.2, Math.round((ROOM.h - 0.2) * 20) / 20, 0.05, fmtM, chg((v) => { item.h = v; })));
+  if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(select(t('mount'), item.mount || 'auto', MOUNTS.map((k) => [k, t('mount.' + k)]), chg((v) => { item.mount = v; })));
   if (item.kind === 'light') ed.append(slider(t('feather'), item.feather || 0, -180, 180, 1, fmtDeg, chg((v) => { item.feather = v; })));
   ed.append(el('div', { class: 'btns' },
     button(t('duplicate'), '', () => {
@@ -276,7 +289,7 @@ function paneCamera() {
   f.append(stepSlider(t('iso'), ISOS, c.iso, (v) => `ISO ${v}`, chg((v) => { c.iso = v; })));
   f.append(slider(t('wb'), c.wb, 2500, 10000, 100, (v) => `${v} K`, chg((v) => { c.wb = v; })));
   f.append(stepSlider(t('focal'), FOCALS, c.focal, (v) => `${v} mm`, chg((v) => { c.focal = v; }, { env: false })));
-  f.append(slider(t('camDist'), c.dist, 0.5, 4.5, 0.05, fmtM, chg((v) => { c.dist = v; }, { env: false })));
+  f.append(slider(t('camDist'), c.dist, 0.5, camMax(), 0.05, fmtM, chg((v) => { c.dist = v; }, { env: false })));
   f.append(slider(t('camHeight'), c.height, 0.3, 2.6, 0.05, fmtM, chg((v) => { c.height = v; }, { env: false })));
   f.append(slider(t('camAngle'), c.angle, -90, 90, 1, fmtDeg, chg((v) => { c.angle = v; }, { env: false })));
   f.append(select(t('aspect'), c.aspect, Object.keys(ASPECTS).map((k) => [k, k]), (v) => { c.aspect = v; layout(); commit({ env: false }); }));
@@ -347,7 +360,9 @@ function paneSet() {
   sw.append(custom);
   f.append(sw);
   f.append(select(t('bdKind'), s.kind || 'paper', BACKDROP_TYPES.map((k) => [k, t('bdKind.' + k)]), (v) => { s.kind = v; commit(); }));
-  f.append(slider(t('backDist'), s.backDist, 0.4, 3.6, 0.05, fmtM, (v) => { s.backDist = v; commit(); }));
+  f.append(select(t('room'), s.room || 'medium', Object.keys(ROOMS).map((k) => [k, t('room.' + k)]), (v) => { s.room = v; setRoom(v); fitRoom(); commit({ rebuild: true }); }));
+  f.append(select(t('floor'), s.floor || 'concrete', FLOORS.map((k) => [k, t('floor.' + k)]), (v) => { s.floor = v; commit(); }));
+  f.append(slider(t('backDist'), Math.min(s.backDist, backMax()), 0.4, backMax(), 0.05, fmtM, (v) => { s.backDist = v; commit(); }));
   f.append(select(t('roomLux'), String(s.roomLux || 0), ROOM_LIGHT.levels.map((k) => [String(k), k ? `${k} lux` : t('roomOff')]), (v) => { s.roomLux = +v; commit({ rebuild: true }); }));
   if (s.roomLux) f.append(select(t('roomK'), String(s.roomK || 3000), ROOM_LIGHT.kelvins.map((k) => [String(k), `${k} K`]), (v) => { s.roomK = +v; commit(); }));
   f.append(select(t('walls'), s.walls, Object.keys(WALLS).map((k) => [k, t('walls.' + k)]), (v) => { s.walls = v; commit(); }));
@@ -575,7 +590,7 @@ const diagram = new Diagram($('diagram'), {
   onMove: (id, x, z) => { const it = state.items.find((i) => i.id === id); if (!it) return; it.x = x; it.z = z; touched(); commit(); syncPolarSliders(); },
   onMoveCamera: (x, z) => {
     const T = subjectTarget(state.subject);
-    state.camera.dist = Math.max(0.5, Math.min(4.5, Math.hypot(x - T.x, z - T.z)));
+    state.camera.dist = Math.max(0.5, Math.min(camMax(), Math.hypot(x - T.x, z - T.z)));
     state.camera.angle = Math.max(-90, Math.min(90, Math.atan2(x - T.x, z - T.z) * 180 / Math.PI));
     commit({ env: false });
     if (activeTab() === 'camera') renderPane();

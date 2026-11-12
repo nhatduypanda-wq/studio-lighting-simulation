@@ -1,7 +1,7 @@
 // Procedural studio geometry: room, backdrop, light rigs, reflectors and subjects.
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
-import { materialParams, sampleGeometry } from './materials.js';
+import { materialParams, sampleGeometry, woodFloorTexture, muslinTexture } from './materials.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 import { ROOM, MODIFIERS, PANELS, PANEL_SURFACES, SKIN_TONES, HAIR_COLORS, CLOTHES_COLORS, modSpec, modelKey, modelMeta } from './data.js';
 
@@ -29,16 +29,28 @@ function shadowed(obj, cast = true, receive = true) {
 export function buildRoom() {
   const g = new THREE.Group();
   const wallMat = std({ color: 0x6e6e6e, roughness: 0.95, side: THREE.BackSide });
-  const box = new THREE.Mesh(new THREE.BoxGeometry(ROOM.w, ROOM.h, ROOM.d), wallMat);
-  box.position.set(0, ROOM.h / 2, (ROOM.zMin + ROOM.zMax) / 2);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), wallMat);
   box.receiveShadow = true;
-  const floorMat = std({ color: 0x5b5b5b, roughness: 0.8 });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w, ROOM.d), floorMat);
+  const floorMat = phys({ color: 0x5b5b5b, roughness: 0.8 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), floorMat);
   floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, 0.001, (ROOM.zMin + ROOM.zMax) / 2);
   floor.receiveShadow = true;
   g.add(box, floor);
-  return { group: g, wallMat };
+  const FLOOR = {
+    concrete: { color: 0x5b5b5b, roughness: 0.8, clearcoat: 0 }, wood: { color: 0xffffff, roughness: 0.5, clearcoat: 0.2, map: true },
+    white: { color: 0xd8d8d8, roughness: 0.7, clearcoat: 0 }, gloss: { color: 0x060606, roughness: 0.06, clearcoat: 1 },
+  };
+  // fit the walls and floor to the current ROOM and apply the floor finish
+  const update = (floorKind) => {
+    const cz = (ROOM.zMin + ROOM.zMax) / 2;
+    box.scale.set(ROOM.w, ROOM.h, ROOM.d); box.position.set(0, ROOM.h / 2, cz);
+    floor.scale.set(ROOM.w, ROOM.d, 1); floor.position.set(0, 0.001, cz);
+    const f = FLOOR[floorKind] || FLOOR.concrete, map = f.map ? woodFloorTexture() : null;
+    floorMat.color.setHex(f.color); floorMat.roughness = f.roughness; floorMat.clearcoat = f.clearcoat; floorMat.clearcoatRoughness = 0.05;
+    if (floorMat.map !== map) { floorMat.map = map; floorMat.needsUpdate = true; }
+  };
+  update('concrete');
+  return { group: g, wallMat, update };
 }
 
 export function buildBackdrop() {
@@ -46,14 +58,17 @@ export function buildBackdrop() {
   const prof = [[0, H], [0, R]];
   for (let i = 1; i <= ARC; i++) { const a = Math.PI + (i / ARC) * Math.PI / 2; prof.push([R + R * Math.cos(a), R + R * Math.sin(a)]); }
   prof.push([LEN, 0]);
-  const pos = [], idx = [];
+  const pos = [], idx = [], uv = [];
+  let run = 0;
   prof.forEach(([z, y], i) => {
-    pos.push(-W / 2, y + 0.004, z, W / 2, y + 0.004, z);
+    if (i) run += Math.hypot(z - prof[i - 1][0], y - prof[i - 1][1]);
+    pos.push(-W / 2, y + 0.004, z, W / 2, y + 0.004, z); uv.push(0, run / W, 1, run / W);
     // wound so the normals face the camera side; shadow lookups are offset along the normal
     if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
   });
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
   const mat = std({ color: 0x777777, roughness: 0.92, side: THREE.DoubleSide });
@@ -73,7 +88,16 @@ export function buildBackdrop() {
   shadowed(g);
   const fixtures = g.children.filter((c) => c !== paper);
   // 'cyc' stretches the sweep wall to wall and removes the paper roll and its stands
-  const setKind = (kind) => { const cyc = kind === 'cyc'; paper.scale.x = cyc ? ROOM.w / W : 1; fixtures.forEach((f) => { f.visible = !cyc; }); };
+  // paper / muslin / vinyl hang from a roll; 'cyc' runs wall to wall; 'none' leaves the bare room
+  const setKind = (kind) => {
+    const cyc = kind === 'cyc';
+    paper.visible = kind !== 'none';
+    paper.scale.x = cyc ? ROOM.w / W : 1;
+    fixtures.forEach((f) => { f.visible = !cyc && kind !== 'none'; });
+    const map = kind === 'muslin' ? muslinTexture() : null;
+    if (mat.map !== map) { mat.map = map; mat.needsUpdate = true; }
+    mat.roughness = kind === 'vinyl' ? 0.28 : kind === 'muslin' ? 1 : 0.92;
+  };
   return { group: g, mat, setKind };
 }
 
@@ -121,13 +145,27 @@ function buildStand() {
   }
   // ceiling plate, shown when the lamp hangs from the ceiling instead of standing on the floor
   const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 16), metal);
-  plate.position.y = ROOM.h - 0.011; plate.visible = false;
-  g.add(legs, plate);
+  plate.visible = false;
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 8), metal); arm.visible = false;
+  const weight = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.12, 0.09), metal); weight.visible = false;
+  g.add(legs, plate, arm, weight);
   shadowed(g);
-  g.userData.setHeight = (h) => { h = Math.max(0.6, h); pole.scale.y = h - 0.1; pole.position.y = 0.1 + (h - 0.1) / 2; legs.visible = true; plate.visible = false; };
+  g.userData.setHeight = (h) => { h = Math.max(0.6, h); pole.scale.y = h - 0.1; pole.position.y = 0.1 + (h - 0.1) / 2; legs.visible = true; plate.visible = arm.visible = weight.visible = false; };
+  // Boom: the stand is at this group's origin; the arm reaches from the top of the pole to the
+  // lamp at (dx, y, dz) in the group's frame, with a counterweight on the short end.
+  g.userData.setBoom = (dx, y, dz) => {
+    const top = Math.max(1.0, y + 0.25);
+    pole.scale.y = top - 0.1; pole.position.y = 0.1 + (top - 0.1) / 2; legs.visible = true; plate.visible = false;
+    const a = new THREE.Vector3(-dx * 0.35, top + (top - y) * 0.35, -dz * 0.35), b = new THREE.Vector3(dx, y, dz);
+    arm.visible = weight.visible = true;
+    arm.scale.y = a.distanceTo(b); arm.position.copy(a).add(b).multiplyScalar(0.5);
+    arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    weight.position.copy(a);
+  };
   g.userData.setHanging = (yBottom) => {
     const len = Math.max(0.05, ROOM.h - yBottom);
-    pole.scale.y = len; pole.position.y = yBottom + len / 2; legs.visible = false; plate.visible = true;
+    pole.scale.y = len; pole.position.y = yBottom + len / 2; legs.visible = false; plate.visible = true; plate.position.y = ROOM.h - 0.011;
+    arm.visible = weight.visible = false;
   };
   return g;
 }

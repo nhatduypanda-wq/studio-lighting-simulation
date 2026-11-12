@@ -1,8 +1,17 @@
 // Top-down lighting diagram: shows the set and lets the user drag lights and the camera.
-import { PANELS, PANEL_SURFACES, LIGHT_TYPES, ASPECTS, modSpec, lightDir, subjectTarget, cameraPose, sensorSize, lightTint, BACKDROP_W } from './data.js';
+import { PANELS, PANEL_SURFACES, LIGHT_TYPES, ASPECTS, modSpec, lightDir, subjectTarget, cameraPose, sensorSize, lightTint, BACKDROP_W, ROOM } from './data.js';
 
-const REGION = { cx: 0, cz: 0.9, w: 6.6, h: 8.2 };
-export const LIMITS = { x: 3.3, zMin: -4.2, zMax: 5.2 };
+// Visible region of the diagram: the medium room is cropped around the working area,
+// other sizes are shown whole.
+const REGION = {
+  get cx() { return 0; },
+  get cz() { return ROOM.w === 7 ? 0.9 : (ROOM.zMin + ROOM.zMax) / 2; },
+  get w() { return ROOM.w === 7 ? 6.6 : ROOM.w + 0.3; },
+  get h() { return ROOM.w === 7 ? 8.2 : ROOM.d + 0.3; },
+};
+export const LIMITS = {
+  get x() { return ROOM.w / 2 - 0.2; }, get zMin() { return ROOM.zMin + 0.3; }, get zMax() { return ROOM.zMax - 0.3; },
+};
 
 export class Diagram {
   constructor(canvas, { getState, onMove, onSelect, onMoveCamera, labels }) {
@@ -75,20 +84,23 @@ export class Diagram {
     const T = subjectTarget(st.subject);
 
     // room and 1 m grid
-    g.fillStyle = '#222325'; g.fillRect(this.X(-3.5), this.Z(-4.5), 7 * s, 10 * s);
+    const rx = -ROOM.w / 2, rz = ROOM.zMin;
+    g.fillStyle = '#222325'; g.fillRect(this.X(rx), this.Z(rz), ROOM.w * s, ROOM.d * s);
     g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1; g.beginPath();
-    for (let x = -3; x <= 3; x++) { g.moveTo(this.X(x), this.Z(-4.5)); g.lineTo(this.X(x), this.Z(5.5)); }
-    for (let z = -4; z <= 5; z++) { g.moveTo(this.X(-3.5), this.Z(z)); g.lineTo(this.X(3.5), this.Z(z)); }
+    for (let x = Math.ceil(rx); x <= -rx; x++) { g.moveTo(this.X(x), this.Z(rz)); g.lineTo(this.X(x), this.Z(ROOM.zMax)); }
+    for (let z = Math.ceil(rz); z <= ROOM.zMax; z++) { g.moveTo(this.X(rx), this.Z(z)); g.lineTo(this.X(-rx), this.Z(z)); }
     g.stroke();
-    g.strokeStyle = '#4a4d52'; g.lineWidth = 2; g.strokeRect(this.X(-3.5), this.Z(-4.5), 7 * s, 10 * s);
+    g.strokeStyle = '#4a4d52'; g.lineWidth = 2; g.strokeRect(this.X(rx), this.Z(rz), ROOM.w * s, ROOM.d * s);
 
     // backdrop paper
-    const bz = -st.set.backDist, bw = st.set.kind === 'cyc' ? 7 : BACKDROP_W;
+    const bz = -st.set.backDist, bw = st.set.kind === 'cyc' ? ROOM.w : BACKDROP_W;
+    if (st.set.kind !== 'none') {
     g.fillStyle = st.set.backdropColor; g.globalAlpha = 0.28;
     g.fillRect(this.X(-bw / 2), this.Z(bz), bw * s, 4.2 * s);
     g.globalAlpha = 1;
     g.strokeStyle = st.set.backdropColor; g.lineWidth = 4; g.beginPath(); g.moveTo(this.X(-bw / 2), this.Z(bz)); g.lineTo(this.X(bw / 2), this.Z(bz)); g.stroke();
     g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1; g.strokeRect(this.X(-bw / 2), this.Z(bz) - 2, bw * s, 4);
+    }
 
     // camera with field of view
     const cp = cameraPose(st.camera, T);

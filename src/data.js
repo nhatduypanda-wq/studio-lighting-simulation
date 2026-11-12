@@ -2,7 +2,16 @@
 import { MODEL_META } from './models-meta.js';
 // Units: metres, degrees, lumen-seconds (flash) / lumens (continuous).
 
-export const ROOM = { w: 7, d: 10, h: 3.2, zMin: -4.5, zMax: 5.5 };
+export const ROOMS = {
+  small: { w: 4.5, d: 6, h: 2.7, zMin: -2.5, zMax: 3.5 },
+  medium: { w: 7, d: 10, h: 3.2, zMin: -4.5, zMax: 5.5 },
+  large: { w: 10, d: 14, h: 4.5, zMin: -6, zMax: 8 },
+};
+// The current room. It is one shared object so every module sees a change of size.
+export const ROOM = { ...ROOMS.medium };
+export function setRoom(id) { Object.assign(ROOM, ROOMS[id] || ROOMS.medium); }
+export const FLOORS = ['concrete', 'wood', 'white', 'gloss'];
+export const MOUNTS = ['auto', 'floor', 'boom', 'ceiling'];
 
 export const LIGHT_TYPES = {
   strobe: { flash: true, q: 8000, ws: 400, kelvin: 5600, mods: ['standard', 'softbox', 'octa', 'strip', 'umb_shoot', 'umb_silver', 'dish', 'snoot'] },
@@ -75,7 +84,7 @@ export const modelKey = (s) => `${s.model}_${s.eth}_${s.age}`;
 export const modelMeta = (s) => MODEL_META[modelKey(s)] || MODEL_META.female_asi_young;
 export const SKIN_TONES = { light: [1, 1, 1], medium: [0.86, 0.74, 0.66], tan: [0.66, 0.5, 0.4], deep: [0.4, 0.28, 0.22] };
 export const BACKDROP_W = 2.72;
-export const BACKDROP_TYPES = ['paper', 'cyc'];
+export const BACKDROP_TYPES = ['paper', 'muslin', 'vinyl', 'cyc', 'none'];
 export const BACKDROPS = { chroma: '#1fb141', white: '#f4f4f2', lightgray: '#b9b9b9', gray: '#777777', black: '#0c0c0c', blue: '#3d5a80', beige: '#c9b79c', red: '#9b2d30', green: '#2f5d50' };
 export const WALLS = { white: '#e8e8e8', gray: '#6e6e6e', black: '#111111' };
 
@@ -101,7 +110,7 @@ export function defaultState() {
     v: 1,
     view: 'camera',
     subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, pose: 'standing', smile: 0, glasses: false, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
-    set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray', kind: 'paper', roomLux: 0, roomK: 3000 },
+    set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray', kind: 'paper', roomLux: 0, roomK: 3000, room: 'medium', floor: 'concrete' },
     camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false, autoAvoid: true },
     items: PRESETS.rembrandt.items(),
     selected: null,
@@ -368,7 +377,7 @@ export function avoidCamera(state) {
   for (const item of state.items) {
     if (item.on === false || !blocksSubject(item, state)) continue;
     if (item.kind === 'panel' && item.size === 'vflat') { stuck.add(item.id); continue; }
-    while (item.h < 3.0 && blocksSubject(item, state)) { item.h = Math.round((item.h + 0.05) * 100) / 100; changed = true; }
+    while (item.h < ROOM.h - 0.25 && blocksSubject(item, state)) { item.h = Math.round((item.h + 0.05) * 100) / 100; changed = true; }
     if (blocksSubject(item, state)) stuck.add(item.id);
   }
   // "raised" = sitting just above the line of sight: any lower and it would block again

@@ -3,7 +3,7 @@
 // subject: one with the lamp faces (specular reflections) and one without (bounce light).
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
-import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightColor, MODELING, lightDir, scrimFor, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
+import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightColor, MODELING, lightDir, scrimFor, setRoom, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
 import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree, setAssetCallback, goboTexture } from './models.js';
 
 // --- shader patches (must run before any material compiles) ---
@@ -210,6 +210,8 @@ export class Engine {
   // Apply the whole app state to the scene.
   sync(state, env = true) {
     this.state = state;
+    setRoom(state.set.room);
+    this.room.update(state.set.floor);
     const T = subjectTarget(state.subject);
     this.target.set(T.x, T.y, T.z);
     this.view = state.view;
@@ -352,8 +354,14 @@ export class Engine {
     rig.stand.visible = !(rig.isPanel && rig.panel.shape !== 'disc') && item.type !== 'window';
     rig.stand.position.set(sx, 0, sz);
     // A floor stand that would show in the photo is swapped for a ceiling mount.
-    rig.hanging = state.camera.autoAvoid !== false && this._standInFrame(sx, sz, sy - 0.05);
-    if (rig.hanging) rig.stand.userData.setHanging(sy + 0.05); else rig.stand.userData.setHeight(sy - 0.05);
+    const mount = item.mount || 'auto';
+    rig.hanging = mount === 'ceiling' || (mount === 'auto' && state.camera.autoAvoid !== false && this._standInFrame(sx, sz, sy - 0.05));
+    if (mount === 'boom') {
+      // stand 1.1 m further from the subject than the lamp, arm reaching in over the set
+      let ox = sx - T.x, oz = sz - T.z; const ol = Math.hypot(ox, oz) || 1; ox = ox / ol * 1.1; oz = oz / ol * 1.1;
+      rig.stand.position.set(sx + ox, 0, sz + oz);
+      rig.stand.userData.setBoom(-ox, sy + 0.08, -oz);
+    } else if (rig.hanging) rig.stand.userData.setHanging(sy + 0.05); else rig.stand.userData.setHeight(sy - 0.05);
   }
 
   // True if a floor stand at (x, z) reaching up to `top` would be visible in the camera frame.

@@ -102,3 +102,16 @@ export function sampleGeometry(shape) {
     default: { const g = new THREE.SphereGeometry(0.095, 96, 64); g.translate(0, 0.095, 0); return g; }
   }
 }
+
+// Shared textures for the set.
+export const woodFloorTexture = () => canvasTex('wood', 512, woodColor, 6, true);
+export const muslinTexture = () => canvasTex('muslin', 512, (g, n) => {
+  g.fillStyle = '#b4b4b4'; g.fillRect(0, 0, n, n);
+  const r = rng(31);
+  for (let i = 0; i < 260; i++) {
+    const x = r() * n, y = r() * n, rad = 30 + r() * 110, v = 110 + r() * 130;
+    const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+    gr.addColorStop(0, `rgba(${v},${v},${v},0.6)`); gr.addColorStop(1, `rgba(${v},${v},${v},0)`);
+    g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+  }
+}, 1, true);
