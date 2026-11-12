@@ -1,6 +1,7 @@
 // Procedural studio geometry: room, backdrop, light rigs, reflectors and subjects.
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { materialParams, sampleGeometry } from './materials.js';
 import { ROOM, MODIFIERS, PANELS, PANEL_SURFACES, SKIN_TONES, HAIR_COLORS, CLOTHES_COLORS, modSpec, modelKey, modelMeta } from './data.js';
 
 // Diffuse image-based light comes from a second probe that excludes the lamp faces
@@ -349,7 +350,7 @@ const TABLE_TOPS = {
   wood: { color: 0x7a5234, roughness: 0.55, metalness: 0 },
 };
 
-function buildProduct(type) {
+function buildProduct(type, st) {
   const root = new THREE.Group();
   const topMat = phys({ color: 0xeeeeee, roughness: 0.85, clearcoat: 0 });
   const top = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.03, 0.8), topMat);
@@ -365,7 +366,10 @@ function buildProduct(type) {
   turn.position.y = 0.9;
   root.add(turn);
 
-  if (type === 'spheres') {
+  if (type === 'material') {
+    const mat = phys({ ...materialParams(st.mat), side: st.shape === 'drape' ? THREE.DoubleSide : THREE.FrontSide });
+    turn.add(new THREE.Mesh(sampleGeometry(st.shape), mat));
+  } else if (type === 'spheres') {
     const r = 0.085;
     const mats = [
       std({ color: new THREE.Color().setRGB(0.18, 0.18, 0.18), roughness: 0.95 }),
@@ -516,10 +520,10 @@ function buildModel(s, onReady) {
   return { group: root, update: apply };
 }
 
-export const subjectSig = (s) => (s.type === 'portrait' ? `portrait|${s.model === 'scan' ? 'scan' : modelKey(s)}` : s.type);
+export const subjectSig = (s) => (s.type === 'portrait' ? `portrait|${s.model === 'scan' ? 'scan' : modelKey(s)}` : s.type === 'material' ? `material|${s.mat}|${s.shape}` : s.type);
 
 export function buildSubject(s, onReady) {
-  if (s.type !== 'portrait') return buildProduct(s.type);
+  if (s.type !== 'portrait') return buildProduct(s.type, s);
   return s.model === 'scan' ? buildPortrait(onReady) : buildModel(s, onReady);
 }
 

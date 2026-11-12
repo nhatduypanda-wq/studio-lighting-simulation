@@ -6,6 +6,7 @@ import {
   defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA,
 } from './data.js';
 import { Diagram, LIMITS } from './diagram.js';
+import { MATERIAL_IDS, SHAPE_IDS } from './materials.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
@@ -260,6 +261,10 @@ function paneSubject() {
     f.append(slider(t('headPitch'), s.pitch, -25, 25, 1, fmtDeg, chg((v) => { s.pitch = v; })));
     if (s.model !== 'scan') f.append(slider(t('headTilt'), s.tilt || 0, -25, 25, 1, fmtDeg, chg((v) => { s.tilt = v; })));
   } else {
+    if (s.type === 'material') {
+      f.append(select(t('material'), s.mat, MATERIAL_IDS.map((k) => [k, t('mat.' + k)]), chg((v) => { s.mat = v; })));
+      f.append(select(t('shape'), s.shape, SHAPE_IDS.map((k) => [k, t('shape.' + k)]), chg((v) => { s.shape = v; })));
+    }
     f.append(slider(t('rotate'), s.rot, -180, 180, 1, fmtDeg, chg((v) => { s.rot = v; })));
     f.append(select(t('table'), s.table, ['white', 'black', 'wood'].map((k) => [k, t('table.' + k)]), chg((v) => { s.table = v; })));
   }

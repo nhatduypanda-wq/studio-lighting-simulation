@@ -37,7 +37,7 @@ export const PANEL_SURFACES = {
   black: { color: 0x050505, rough: 1, metal: 0 },
 };
 
-export const SUBJECTS = ['portrait', 'spheres', 'bottle', 'vase', 'shaker'];
+export const SUBJECTS = ['portrait', 'material', 'spheres', 'bottle', 'vase', 'shaker'];
 export const MODELS = ['female', 'male', 'scan'];
 export const LOOKS = ['asi', 'cau', 'afr'];
 export const AGES = ['young', 'old'];
@@ -71,7 +71,7 @@ export function defaultState() {
   const st = {
     v: 1,
     view: 'camera',
-    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, rot: 0, table: 'white' },
+    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
     set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray' },
     camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false },
     items: PRESETS.rembrandt.items(),
@@ -213,8 +213,9 @@ export function subjectTarget(subject) {
   }
   return { x: 0, y: PRODUCT_Y[subject.type] ?? 1.05, z: 0 };
 }
-const PRODUCT_Y = { spheres: 0.985, bottle: 1.08, vase: 1.08, shaker: 1.04 };
+const PRODUCT_Y = { material: 1.02, spheres: 0.985, bottle: 1.08, vase: 1.08, shaker: 1.04 };
 export const PRODUCT_CAMERA = {
+  material: { focal: 85, aspect: '1:1', dist: 1.15 },
   spheres: { focal: 50, dist: 1.7, aspect: '3:2' },
   bottle: { focal: 85, dist: 1.35, aspect: '4:5' },
   vase: { focal: 85, dist: 1.35, aspect: '4:5' },
