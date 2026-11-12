@@ -28,12 +28,16 @@ python3 -m http.server 8080
 - **Chụp chất lượng cao** (giai đoạn 3): nút "Chất lượng cao" dựng lại ảnh bằng path tracing — ánh sáng dội thật giữa mọi bề mặt, phản chiếu thật trên kim loại, khúc xạ qua thủy tinh. Đổi bất cứ gì sẽ hủy và quay về xem trực tiếp.
 - **Tự tránh khung hình**: chân đèn lọt vào khung hình thì đèn tự chuyển sang treo trần; đèn hoặc tấm hắt sáng che mất chủ thể thì tự được nâng lên cho tới khi máy ảnh nhìn thấy chủ thể. Tắt được trong tab Máy ảnh.
 - **Chủ thể khác**: bộ cầu tham chiếu (xám 18 %, chrome, trắng, sơn bóng), chai thủy tinh, bình gốm, bình lắc inox.
-- **Đèn**: flash studio 400 Ws, speedlight, LED COB 300 W, LED panel 100 W (tối đa 5 đèn).
-- **Phụ kiện**: chóa tiêu chuẩn, softbox 60×90, octabox 120, stripbox 30×120, dù xuyên, dù phản bạc, beauty dish, snoot, lưới tổ ong.
+- **Đèn**: flash studio 400 Ws, speedlight, LED COB 300 W, LED panel 100 W, ring light, đèn ống LED (tối đa 5 đèn).
+- **Phụ kiện**: chóa tiêu chuẩn, softbox 60×90, octabox 120, stripbox 30×120, dù xuyên, dù phản bạc, beauty dish, snoot, parabolic sâu, Fresnel, barn doors, optical spot kèm gobo (cửa sổ, rèm lá, tán lá), lưới tổ ong.
+- **Gel màu**: CTO/CTB toàn phần và 1/2 (dịch nhiệt độ màu theo mired), 8 gel hiệu ứng.
+- **Xoay đèn tự do** ±180° để feather hoặc chĩa đèn vào phông.
 - **Hắt sáng / cờ**: tròn 80 và 110 cm, V-flat 1×2 m; trắng, bạc, vàng, đen.
-- **Phông**: giấy seamless 8 màu và màu tùy chọn, khoảng cách chủ thể–phông, tường trắng/xám/đen.
-- **Máy ảnh**: tiêu cự, khẩu độ (có độ sâu trường ảnh), tốc độ, ISO, cân bằng trắng, vị trí máy, khung hình, cảnh báo cháy sáng, lưu ảnh JPEG.
-- **Học tập**: 8 bố cục mẫu, sơ đồ nhìn từ trên kéo thả được, đo sáng tại chủ thể cho từng đèn (f-stop và độ lệch EV), cảnh báo tốc độ đồng bộ flash.
+- **Phông**: giấy seamless 9 màu (có xanh chroma) và màu tùy chọn, hoặc cyclorama kín hai tường; khoảng cách chủ thể–phông; tường trắng/xám/đen.
+- **Máy ảnh**: tiêu cự, khẩu độ (có độ sâu trường ảnh), tốc độ, ISO, cân bằng trắng, vị trí máy, khung hình, lưu ảnh JPEG.
+- **Công cụ đo**: đo sáng từng đèn tại chủ thể (f-stop, độ lệch EV), tỉ lệ đèn chính:đèn phụ, histogram, false color theo vùng phơi sáng, cảnh báo cháy sáng, cảnh báo tốc độ đồng bộ flash.
+- **So sánh và ghi chép**: lưu ảnh A rồi bật/tắt để so với bố cục hiện tại; xuất sơ đồ ánh sáng PNG kèm danh sách thiết bị và thông số.
+- **Học**: tab Học có 9 bài ngắn (nghịch đảo bình phương, gắt/mềm, bốn kiểu sáng chân dung, tỉ lệ sáng, feathering, tách nền, nhiệt độ màu và gel, kim loại bóng, negative fill), mỗi bài dựng sẵn bố cục và gợi ý một thứ để thử; ngoài ra có 8 bố cục mẫu.
 
 ## Mô hình ánh sáng / Lighting model
 

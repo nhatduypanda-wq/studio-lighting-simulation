@@ -8,7 +8,7 @@ export const LESSONS = [
   { id: 'inverse', items: () => [L({ mod: 'softbox', ...P(-40, 0.8), h: 1.75, stops: -4.3 })], set: { backDist: 1.5, walls: 'black', backdrop: 'gray', backdropColor: '#777777' } },
   { id: 'size', items: () => [L({ mod: 'standard', ...P(-40, 1.6), h: 2.1, stops: -4.7 })], set: { walls: 'gray' } },
   { id: 'patterns', items: () => [L({ mod: 'softbox', ...P(-45, 1.4), h: 2.1, stops: -2.7 })], set: { walls: 'gray' } },
-  { id: 'ratio', items: () => [L({ mod: 'softbox', ...P(-40, 1.5), h: 2.0, stops: -2.3 }), L({ mod: 'umb_shoot', ...P(15, 2.2), h: 1.6, stops: -4 })], set: { walls: 'black' } },
+  { id: 'ratio', items: () => [L({ mod: 'softbox', ...P(-40, 1.5), h: 2.0, stops: -2.3 }), L({ mod: 'umb_shoot', ...P(15, 2.2), h: 1.6, stops: -8 / 3 })], set: { walls: 'black' } },
   { id: 'feather', items: () => [L({ mod: 'softbox', ...P(-60, 0.9), h: 1.7, stops: -4 })], set: { walls: 'gray' } },
   { id: 'separation', items: () => [L({ mod: 'octa', ...P(-35, 1.5), h: 2.0, stops: -2 }), L({ mod: 'strip', grid: true, ...P(150, 1.5), h: 1.9, stops: -2.3 }),
     L({ mod: 'standard', x: 0.25, z: -1.2, h: 0.55, stops: -5, feather: 180 })], set: { walls: 'black', backDist: 2.2, backdrop: 'gray', backdropColor: '#777777' } },

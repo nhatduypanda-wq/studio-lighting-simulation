@@ -46,7 +46,7 @@ select {
 .stageBtns { position: absolute; right: 10px; top: 10px; left: 10px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 #abImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .abTag { position: absolute; left: 10px; top: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 2px 9px; border-radius: 6px; }
-#hist { position: absolute; right: 10px; bottom: 10px; width: 128px; height: 56px; background: rgba(0,0,0,.55); border-radius: 6px; pointer-events: none; }
+#hist { position: absolute; right: 10px; bottom: 42px; width: 128px; height: 56px; background: rgba(0,0,0,.55); border-radius: 6px; pointer-events: none; }
 .lesson { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; margin: 0 0 10px; background: var(--panel2); }
 .lesson h3 { margin: 0 0 6px; font-size: 15px; }
 .lesson p { margin: 0 0 8px; font-size: 13.5px; color: var(--dim); -webkit-user-select: text; user-select: text; }
@@ -112,6 +112,8 @@ dialog button { background: var(--accent); color: var(--accent-ink); border: 0; 
   #brandName, #resetBtn, #aboutBtn { display: none; }
   .ghost { padding: 6px 8px; }
   .seg button { padding: 6px 9px; }
+  .save { padding: 6px 9px; font-size: 13px; }
+  .tabs button { font-size: 13px; }
   .preset { flex: 1 1 96px; }
 }
 
