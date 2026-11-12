@@ -22,7 +22,9 @@ python3 -m http.server 8080
 
 ## Giai đoạn 1 có gì / What phase 1 includes
 
-- **Chủ thể**: chân dung (đầu người quét 3D), bộ cầu tham chiếu (xám 18 %, chrome, trắng, sơn bóng), chai thủy tinh, bình gốm, bình lắc inox.
+- **Người mẫu** (giai đoạn 2): nữ và nam, ba nhóm ngoại hình (Đông Á, châu Âu, châu Phi), trẻ hoặc lớn tuổi; 4 kiểu tóc nữ, 3 kiểu tóc nam, 7 màu tóc, 3 màu mắt, 6 màu áo; xoay, cúi/ngẩng và nghiêng đầu. Vẫn giữ mẫu đầu quét 3D.
+- **Da** (giai đoạn 2): tán xạ dưới da xấp xỉ — mép bóng ngả đỏ ấm, ánh sáng xuyên qua phần mỏng như tai khi chiếu ngược.
+- **Chủ thể khác**: bộ cầu tham chiếu (xám 18 %, chrome, trắng, sơn bóng), chai thủy tinh, bình gốm, bình lắc inox.
 - **Đèn**: flash studio 400 Ws, speedlight, LED COB 300 W, LED panel 100 W (tối đa 5 đèn).
 - **Phụ kiện**: chóa tiêu chuẩn, softbox 60×90, octabox 120, stripbox 30×120, dù xuyên, dù phản bạc, beauty dish, snoot, lưới tổ ong.
 - **Hắt sáng / cờ**: tròn 80 và 110 cm, V-flat 1×2 m; trắng, bạc, vàng, đen.
@@ -37,7 +39,7 @@ python3 -m http.server 8080
 - Hai đầu dò ánh sáng đặt tại chủ thể: một cái nhìn thấy mặt đèn (cho phản chiếu trên da, kim loại, thủy tinh), một cái không (cho ánh sáng dội từ tường, sàn, phông và tấm hắt sáng).
 - Độ sâu trường ảnh và khử răng cưa cũng được cộng dồn bằng cách xê dịch máy ảnh trên khẩu độ thật (tiêu cự / 2N).
 
-Giới hạn hiện tại: ánh sáng dội là xấp xỉ theo một điểm tại chủ thể, da chưa có tán xạ dưới da, mẫu người chưa có tóc và mắt nhắm. Dò tia (path tracing) nằm ở giai đoạn 2.
+Giới hạn hiện tại: ánh sáng dội là xấp xỉ theo một điểm tại chủ thể; tán xạ dưới da là xấp xỉ dựa trên bản đồ bóng, chưa phải mô phỏng đầy đủ; tóc là các mảng phẳng có vân, chưa phải từng sợi; người mẫu chỉ có tư thế đứng. Dò tia (path tracing) và bộ chất liệu đầy đủ là bước tiếp theo.
 
 ## Cấu trúc / Layout
 
@@ -49,6 +51,7 @@ Giới hạn hiện tại: ánh sáng dội là xấp xỉ theo một điểm t�
 | `src/models.js` | Hình học phòng, phông, đèn, phụ kiện, chủ thể |
 | `src/diagram.js` | Sơ đồ ánh sáng nhìn từ trên |
 | `src/data.js` | Danh mục thiết bị, bố cục mẫu, công thức trắc quang |
+| `tools/build_models.py` | Dựng người mẫu từ dữ liệu MakeHuman ra `assets/models/` |
 | `src/i18n.js` | Chuỗi tiếng Việt và tiếng Anh |
 | `sw.js`, `manifest.webmanifest` | PWA, chạy offline |
 
@@ -56,5 +59,6 @@ Khi sửa file, tăng `CACHE` trong `sw.js` để máy đã cài nhận bản m�
 
 ## Ghi công / Credits
 
-- Mẫu đầu người: “Infinite, 3D Head Scan” của Lee Perry-Smith, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), xem `assets/LeePerrySmith_License.txt`.
+- Người mẫu, tóc, mắt, quần áo và ảnh da: bộ tài nguyên hệ thống của [MakeHuman](http://www.makehumancommunity.org), CC0.
+- Mẫu đầu người quét 3D: “Infinite, 3D Head Scan” của Lee Perry-Smith, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), xem `assets/LeePerrySmith_License.txt`.
 - [three.js](https://threejs.org) (MIT), xem `vendor/THREE-LICENSE`.

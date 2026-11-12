@@ -260,8 +260,8 @@ function loadHead() {
         let mesh = null;
         gltf.scene.traverse((o) => { if (o.isMesh && !mesh) mesh = o; });
         const tl = new THREE.TextureLoader();
-        const map = tl.load('assets/head-color.jpg'); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4;
-        const normalMap = tl.load('assets/head-normal.jpg'); normalMap.anisotropy = 4;
+        const map = tl.load('assets/head-color.jpg', () => onAsset && onAsset()); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4;
+        const normalMap = tl.load('assets/head-normal.jpg', () => onAsset && onAsset()); normalMap.anisotropy = 4;
         mesh.geometry.userData.shared = true;
         resolve({ geometry: mesh.geometry, map, normalMap });
       }, undefined, reject);
@@ -418,10 +418,13 @@ function loadGLB(url) {
   }
   return glbCache.get(url);
 }
+// Called whenever a texture finishes loading so the renderer can redraw.
+let onAsset = null;
+export function setAssetCallback(fn) { onAsset = fn; }
 const texCache = new Map();
 function tex(name, srgb = true) {
   if (!texCache.has(name)) {
-    const t = new THREE.TextureLoader().load('assets/models/tex/' + name);
+    const t = new THREE.TextureLoader().load('assets/models/tex/' + name, () => onAsset && onAsset());
     t.flipY = false; t.anisotropy = 8;
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
     texCache.set(name, t);

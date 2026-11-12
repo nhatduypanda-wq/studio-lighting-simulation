@@ -13,8 +13,7 @@ export const MODEL_META = {
    "bob01",
    "long01",
    "ponytail01",
-   "short03",
-   "afro01"
+   "short03"
   ]
  },
  "female_asi_young": {
@@ -30,8 +29,7 @@ export const MODEL_META = {
    "bob01",
    "long01",
    "ponytail01",
-   "short03",
-   "afro01"
+   "short03"
   ]
  },
  "female_afr_young": {
@@ -47,8 +45,7 @@ export const MODEL_META = {
    "bob01",
    "long01",
    "ponytail01",
-   "short03",
-   "afro01"
+   "short03"
   ]
  },
  "female_cau_old": {
@@ -64,8 +61,7 @@ export const MODEL_META = {
    "bob01",
    "long01",
    "ponytail01",
-   "short03",
-   "afro01"
+   "short03"
   ]
  },
  "female_asi_old": {
@@ -81,8 +77,7 @@ export const MODEL_META = {
    "bob01",
    "long01",
    "ponytail01",
-   "short03",
-   "afro01"
+   "short03"
   ]
  },
  "female_afr_old": {
@@ -98,8 +93,7 @@ export const MODEL_META = {
    "bob01",
    "long01",
    "ponytail01",
-   "short03",
-   "afro01"
+   "short03"
   ]
  },
  "male_cau_young": {
@@ -114,8 +108,7 @@ export const MODEL_META = {
   "hair": [
    "short02",
    "short04",
-   "short01",
-   "afro01"
+   "short01"
   ]
  },
  "male_asi_young": {
@@ -130,8 +123,7 @@ export const MODEL_META = {
   "hair": [
    "short02",
    "short04",
-   "short01",
-   "afro01"
+   "short01"
   ]
  },
  "male_afr_young": {
@@ -146,8 +138,7 @@ export const MODEL_META = {
   "hair": [
    "short02",
    "short04",
-   "short01",
-   "afro01"
+   "short01"
   ]
  },
  "male_cau_old": {
@@ -162,8 +153,7 @@ export const MODEL_META = {
   "hair": [
    "short02",
    "short04",
-   "short01",
-   "afro01"
+   "short01"
   ]
  },
  "male_asi_old": {
@@ -178,8 +168,7 @@ export const MODEL_META = {
   "hair": [
    "short02",
    "short04",
-   "short01",
-   "afro01"
+   "short01"
   ]
  },
  "male_afr_old": {
@@ -194,8 +183,7 @@ export const MODEL_META = {
   "hair": [
    "short02",
    "short04",
-   "short01",
-   "afro01"
+   "short01"
   ]
  }
 };

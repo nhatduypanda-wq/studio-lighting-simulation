@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightColor, lightDir, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
-import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree } from './models.js';
+import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree, setAssetCallback } from './models.js';
 
 // --- shader patches (must run before any material compiles) ---
 function patch(chunk, find, repl) {
@@ -163,6 +163,7 @@ export class Engine {
     this.state = null;
     this._v = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), q: new THREE.Quaternion() };
     this._loop = this._loop.bind(this);
+    setAssetCallback(() => this.invalidate(true));
   }
 
   start() { requestAnimationFrame(this._loop); }

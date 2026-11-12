@@ -37,8 +37,8 @@ os.makedirs(os.path.join(OUT, 'tex'), exist_ok=True)
 GENDERS = ['female', 'male']
 ETHNIC = {'cau': 'caucasian', 'asi': 'asian', 'afr': 'african'}
 AGES = {'young': 0.0, 'old': 0.7}  # weight of the "old" macro targets
-HAIR = {'female': ['bob01', 'long01', 'ponytail01', 'short03', 'afro01'],
-        'male': ['short02', 'short04', 'short01', 'afro01']}
+HAIR = {'female': ['bob01', 'long01', 'ponytail01', 'short03'],
+        'male': ['short02', 'short04', 'short01']}
 CLOTHES = {'female': ['female_casualsuit01'], 'male': ['male_casualsuit02']}
 ARM_DOWN_DEG = 27.0
 SCALE = 0.1  # MakeHuman units are decimetres
