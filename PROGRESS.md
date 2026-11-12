@@ -6,11 +6,11 @@ Ghi chú để tiếp tục công việc khi phiên làm việc bị gián đo�
 
 Dựng lại mẫu: `python3 tools/build_models.py --mh <makehuman> --data <makehuman-data> --pack <asset pack>` (xem chú thích đầu file).
 
-## Giai đoạn 3 — chất liệu + chụp chất lượng cao (đang làm, nhánh `phase-3`)
+## Giai đoạn 3 — chất liệu + chụp chất lượng cao: XONG, đã gộp vào `main`
 
-Kế hoạch:
-1. Chủ thể "Mẫu chất liệu": một vật (cầu / khối / trụ / nút xoắn) với ~14 chất liệu chọn được (vải cotton, lụa, nhung, da thuộc, gỗ, giấy, nhựa bóng/mờ, cao su, inox xước, vàng, đồng, thủy tinh, sứ men). Vân bề mặt sinh bằng canvas trong `src/materials.js`.
-2. Nút "Chụp chất lượng cao": path tracing bằng thư viện three-gpu-pathtracer (vendor vào `vendor/`, thêm import map). Dựng một scene riêng cho path tracer: bản sao lưới (đầu đã xoay sẵn trên CPU), đèn mềm thành RectAreaLight, đèn gom thành spot có bán kính. Hủy khi người dùng đổi bất cứ gì. Phải bắt lỗi và báo nếu thiết bị không chạy được.
+Lưu ý khi thử: path tracing rất nặng trên máy giả lập không có GPU; chỉ thử với cửa sổ nhỏ (khoảng 420×560) và dưới 60 mẫu, nếu không máy có thể bị treo.
 
-Còn lại: xem `git log` nhánh phase-3 để biết bước nào đã commit; sau đó kiểm tra điện thoại + 2 ngôn ngữ, cập nhật README, tăng `CACHE` trong `sw.js`, gộp vào `main`.
-
+## Việc tiếp theo (chờ người dùng duyệt)
+- Thiết bị còn thiếu so với kế hoạch ban đầu: gel màu, gobo/optical spot, barn doors, scrim, parabolic, Fresnel, đèn ống, ring light, cyclorama, phông xanh.
+- Công cụ học: tỉ lệ key:fill, histogram, false color, xuất sơ đồ ánh sáng PNG, so sánh A/B, bài học/thử thách.
+- Người mẫu: thêm tư thế ngồi, biểu cảm, mẫu chất lượng cao hơn nếu người dùng cung cấp.

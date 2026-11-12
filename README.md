@@ -20,7 +20,7 @@ python3 -m http.server 8080
 
 Để dùng trên iPhone/iPad: đưa thư mục lên một host HTTPS (ví dụ GitHub Pages), mở bằng Safari, chọn **Chia sẻ → Thêm vào Màn hình chính**.
 
-## Giai đoạn 1 có gì / What phase 1 includes
+## Tính năng / Features
 
 - **Người mẫu** (giai đoạn 2): nữ và nam, ba nhóm ngoại hình (Đông Á, châu Âu, châu Phi), trẻ hoặc lớn tuổi; 4 kiểu tóc nữ, 3 kiểu tóc nam, 7 màu tóc, 3 màu mắt, 6 màu áo; xoay, cúi/ngẩng và nghiêng đầu. Vẫn giữ mẫu đầu quét 3D.
 - **Da** (giai đoạn 2): tán xạ dưới da xấp xỉ — mép bóng ngả đỏ ấm, ánh sáng xuyên qua phần mỏng như tai khi chiếu ngược.
