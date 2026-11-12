@@ -4,16 +4,76 @@
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightColor, lightDir, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
-import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, disposeTree } from './models.js';
+import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree } from './models.js';
 
 // --- shader patches (must run before any material compiles) ---
-THREE.ShaderChunk.envmap_physical_pars_fragment = THREE.ShaderChunk.envmap_physical_pars_fragment
-  .replace('vec3 getIBLIrradiance', 'uniform sampler2D envMapDiffuse;\n\tvec3 getIBLIrradiance')
-  .replace('textureCubeUV( envMap, envMapRotation * worldNormal, 1.0 )', 'textureCubeUV( envMapDiffuse, envMapRotation * worldNormal, 1.0 )');
+function patch(chunk, find, repl) {
+  const src = THREE.ShaderChunk[chunk];
+  if (!src.includes(find)) throw new Error('shader patch target missing in ' + chunk);
+  THREE.ShaderChunk[chunk] = src.replace(find, repl);
+}
+patch('envmap_physical_pars_fragment', 'vec3 getIBLIrradiance', 'uniform sampler2D envMapDiffuse;\n\tvec3 getIBLIrradiance');
+patch('envmap_physical_pars_fragment', 'textureCubeUV( envMap, envMapRotation * worldNormal, 1.0 )', 'textureCubeUV( envMapDiffuse, envMapRotation * worldNormal, 1.0 )');
 // Specular highlights come from the probe (which sees the true shape of each lamp),
 // so the point-light specular term is removed to avoid counting it twice.
-THREE.ShaderChunk.lights_physical_pars_fragment = THREE.ShaderChunk.lights_physical_pars_fragment
-  .replace('reflectedLight.directSpecular += irradiance * BRDF_GGX( directLight.direction, geometryViewDir, geometryNormal, material );', '');
+patch('lights_physical_pars_fragment', 'reflectedLight.directSpecular += irradiance * BRDF_GGX( directLight.direction, geometryViewDir, geometryNormal, material );', '');
+
+// Skin (materials with the USE_SKIN define): approximate subsurface scattering.
+//  - each colour channel looks up the shadow a little further above the surface, so light
+//    wraps around the terminator and shadow edges further for red than for blue;
+//  - the distance light travels inside the head is read from the shadow map, which lets
+//    light glow through thin parts such as ears and nostrils when lit from behind.
+export const SHADOW_NEAR = 0.12, SHADOW_FAR = 14;
+THREE.ShaderChunk.shadowmap_pars_vertex += '\n#ifdef USE_SKIN\n\tvarying vec3 vSkinWorld;\n#endif\n';
+THREE.ShaderChunk.worldpos_vertex += '\n#ifdef USE_SKIN\n\tvSkinWorld = worldPosition.xyz;\n#endif\n';
+THREE.ShaderChunk.lights_physical_pars_fragment = `
+#ifdef USE_SKIN
+	varying vec3 vSkinWorld;
+	vec3 skinShadowRGB = vec3( 1.0 );
+	vec3 skinTrans = vec3( 0.0 );
+#endif
+` + THREE.ShaderChunk.lights_physical_pars_fragment;
+THREE.ShaderChunk.shadowmap_pars_fragment += `
+#if defined( USE_SKIN ) && defined( USE_SHADOWMAP ) && NUM_SPOT_LIGHT_COORDS > 0
+	uniform mat4 spotLightMatrix[ NUM_SPOT_LIGHT_COORDS ];
+	void skinShadow( sampler2D map, vec2 mapSize, float bias, float radius, mat4 lightMatrix, vec3 worldNormal ) {
+		skinShadowRGB.r = getShadow( map, mapSize, 1.0, bias, radius, lightMatrix * vec4( vSkinWorld + worldNormal * 0.0036, 1.0 ) );
+		skinShadowRGB.g = getShadow( map, mapSize, 1.0, bias, radius, lightMatrix * vec4( vSkinWorld + worldNormal * 0.002, 1.0 ) );
+		skinShadowRGB.b = getShadow( map, mapSize, 1.0, bias, radius, lightMatrix * vec4( vSkinWorld + worldNormal * 0.0011, 1.0 ) );
+		// red always scatters at least as far as green, and green as far as blue
+		skinShadowRGB.g = max( skinShadowRGB.g, skinShadowRGB.b );
+		skinShadowRGB.r = max( skinShadowRGB.r, skinShadowRGB.g );
+		vec4 sc = lightMatrix * vec4( vSkinWorld - worldNormal * 0.002, 1.0 );
+		sc.xyz /= sc.w;
+		if ( sc.x > 0.0 && sc.x < 1.0 && sc.y > 0.0 && sc.y < 1.0 && sc.z < 1.0 ) {
+			vec2 tx = 1.5 / mapSize;
+			float zFrag = perspectiveDepthToViewZ( sc.z, ${SHADOW_NEAR.toFixed(3)}, ${SHADOW_FAR.toFixed(1)} );
+			float thickness = 0.0;
+			thickness += perspectiveDepthToViewZ( unpackRGBAToDepth( texture2D( map, sc.xy + vec2( tx.x, tx.y ) ) ), ${SHADOW_NEAR.toFixed(3)}, ${SHADOW_FAR.toFixed(1)} );
+			thickness += perspectiveDepthToViewZ( unpackRGBAToDepth( texture2D( map, sc.xy + vec2( -tx.x, tx.y ) ) ), ${SHADOW_NEAR.toFixed(3)}, ${SHADOW_FAR.toFixed(1)} );
+			thickness += perspectiveDepthToViewZ( unpackRGBAToDepth( texture2D( map, sc.xy + vec2( tx.x, -tx.y ) ) ), ${SHADOW_NEAR.toFixed(3)}, ${SHADOW_FAR.toFixed(1)} );
+			thickness += perspectiveDepthToViewZ( unpackRGBAToDepth( texture2D( map, sc.xy + vec2( -tx.x, -tx.y ) ) ), ${SHADOW_NEAR.toFixed(3)}, ${SHADOW_FAR.toFixed(1)} );
+			thickness = max( 0.0, thickness * 0.25 - zFrag - 0.004 );
+			skinTrans = exp( - thickness / vec3( 0.007, 0.003, 0.002 ) );
+		}
+	}
+#endif
+`;
+patch('lights_fragment_begin', 'getSpotLightInfo( spotLight, geometryPosition, directLight );', `getSpotLightInfo( spotLight, geometryPosition, directLight );
+		#ifdef USE_SKIN
+		skinShadowRGB = vec3( 1.0 ); skinTrans = vec3( 0.0 );
+		#endif`);
+patch('lights_fragment_begin', 'directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( spotShadowMap[ i ], spotLightShadow.shadowMapSize, spotLightShadow.shadowIntensity, spotLightShadow.shadowBias, spotLightShadow.shadowRadius, vSpotLightCoord[ i ] ) : 1.0;', `#ifdef USE_SKIN
+		if ( directLight.visible && receiveShadow ) skinShadow( spotShadowMap[ i ], spotLightShadow.shadowMapSize, spotLightShadow.shadowBias, spotLightShadow.shadowRadius, spotLightMatrix[ i ], inverseTransformDirection( geometryNormal, viewMatrix ) );
+		#else
+		directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( spotShadowMap[ i ], spotLightShadow.shadowMapSize, spotLightShadow.shadowIntensity, spotLightShadow.shadowBias, spotLightShadow.shadowRadius, vSpotLightCoord[ i ] ) : 1.0;
+		#endif`);
+patch('lights_physical_pars_fragment', 'vec3 irradiance = dotNL * directLight.color;', `vec3 irradiance = dotNL * directLight.color;
+	#ifdef USE_SKIN
+		float skinNL = dot( geometryNormal, directLight.direction );
+		vec3 skinWrap = vec3( 0.2, 0.11, 0.06 );
+		irradiance = ( saturate( ( skinNL + skinWrap ) / ( 1.0 + skinWrap ) ) * skinShadowRGB + 0.4 * skinTrans * saturate( 0.2 - skinNL ) * ( 1.0 - skinShadowRGB ) ) * directLight.color;
+	#endif`);
 
 const halton = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i % b); i = Math.floor(i / b); } return r; };
 const QUAD_VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -27,7 +87,7 @@ export class Engine {
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.NeutralToneMapping;
     r.shadowMap.enabled = true;
-    r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.shadowMap.type = mobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     r.autoClear = false;
     this.pixelRatio = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2);
     this.maxSamples = mobile ? 32 : 64;
@@ -137,10 +197,11 @@ export class Engine {
     this.backdrop.mat.color.set(state.set.backdropColor);
     this.backdrop.group.position.z = -state.set.backDist;
 
-    if (this.subjectType !== state.subject.type) {
+    const sig = subjectSig(state.subject);
+    if (this.subjectType !== sig) {
       if (this.subject) { this.scene.remove(this.subject.group); disposeTree(this.subject.group); }
-      this.subject = buildSubject(state.subject.type, () => this.invalidate(true));
-      this.subjectType = state.subject.type;
+      this.subject = buildSubject(state.subject, () => this.invalidate(true));
+      this.subjectType = sig;
       this.scene.add(this.subject.group);
     }
     this.subject.update(state.subject);
@@ -160,7 +221,7 @@ export class Engine {
           l.castShadow = true;
           l.shadow.mapSize.set(this.shadowSize, this.shadowSize);
           l.shadow.bias = -0.0006; l.shadow.normalBias = 0.012;
-          l.shadow.camera.near = 0.12; l.shadow.camera.far = 14;
+          l.shadow.camera.near = SHADOW_NEAR; l.shadow.camera.far = SHADOW_FAR;
           this.scene.add(l, l.target);
         }
         this.scene.add(rig.group);

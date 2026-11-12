@@ -1,8 +1,8 @@
 // Offline support: cache the app shell, serve from cache first and refresh in the background.
-const CACHE = 'studio-light-v1';
+const CACHE = 'studio-light-v2';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
-  'src/main.js', 'src/engine.js', 'src/models.js', 'src/diagram.js', 'src/data.js', 'src/i18n.js',
+  'src/main.js', 'src/engine.js', 'src/models.js', 'src/diagram.js', 'src/data.js', 'src/i18n.js', 'src/models-meta.js',
   'vendor/three.module.js', 'vendor/GLTFLoader.js', 'vendor/BufferGeometryUtils.js', 'vendor/OrbitControls.js',
   'assets/LeePerrySmith.glb', 'assets/head-color.jpg', 'assets/head-normal.jpg',
   'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',

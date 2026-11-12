@@ -1,4 +1,5 @@
 // Equipment catalogue, photographic constants and lighting presets.
+import { MODEL_META } from './models-meta.js';
 // Units: metres, degrees, lumen-seconds (flash) / lumens (continuous).
 
 export const ROOM = { w: 7, d: 10, h: 3.2, zMin: -4.5, zMax: 5.5 };
@@ -37,6 +38,14 @@ export const PANEL_SURFACES = {
 };
 
 export const SUBJECTS = ['portrait', 'spheres', 'bottle', 'vase', 'shaker'];
+export const MODELS = ['female', 'male', 'scan'];
+export const LOOKS = ['asi', 'cau', 'afr'];
+export const AGES = ['young', 'old'];
+export const HAIR_COLORS = { black: 0x0b0a09, darkbrown: 0x24160d, brown: 0x4a2f1c, blonde: 0xb39160, red: 0x74331a, grey: 0x8e8e8e, white: 0xdcdcdc };
+export const EYE_COLORS = ['brown', 'blue', 'green'];
+export const CLOTHES_COLORS = { charcoal: 0x3a3a40, black: 0x121212, white: 0xe6e6e6, navy: 0x1d2946, red: 0x7c1d24, beige: 0xb9a688 };
+export const modelKey = (s) => `${s.model}_${s.eth}_${s.age}`;
+export const modelMeta = (s) => MODEL_META[modelKey(s)] || MODEL_META.female_asi_young;
 export const SKIN_TONES = { light: [1, 1, 1], medium: [0.86, 0.74, 0.66], tan: [0.66, 0.5, 0.4], deep: [0.4, 0.28, 0.22] };
 export const BACKDROPS = { white: '#f4f4f2', lightgray: '#b9b9b9', gray: '#777777', black: '#0c0c0c', blue: '#3d5a80', beige: '#c9b79c', red: '#9b2d30', green: '#2f5d50' };
 export const WALLS = { white: '#e8e8e8', gray: '#6e6e6e', black: '#111111' };
@@ -59,16 +68,22 @@ export function makePanel(o = {}) {
 }
 
 export function defaultState() {
-  return {
+  const st = {
     v: 1,
     view: 'camera',
-    subject: { type: 'portrait', skin: 'light', yaw: 0, pitch: 0, pose: 'standing', rot: 0, table: 'white' },
+    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, rot: 0, table: 'white' },
     set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray' },
-    camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.58, angle: 0, aspect: '4:5', clip: false },
+    camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false },
     items: PRESETS.rembrandt.items(),
     selected: null,
   };
+  // presets are authored for a subject whose face is at 1.57 m
+  const dy = subjectTarget(st.subject).y - PRESET_FACE_Y;
+  for (const i of st.items) i.h += dy;
+  st.camera.height += dy;
+  return st;
 }
+export const PRESET_FACE_Y = 1.57;
 
 // Positions use polar coordinates around the subject: a = angle from the camera axis
 // (0 = on the camera axis, + = camera right), d = distance, h = height.
@@ -191,7 +206,11 @@ export function meterLight(item, target, cam) {
 }
 
 export function subjectTarget(subject) {
-  if (subject.type === 'portrait') return { x: 0, y: (subject.pose === 'seated' ? 1.28 : 1.7) - 0.13, z: 0 };
+  if (subject.type === 'portrait') {
+    if (subject.model === 'scan') return { x: 0, y: 1.57, z: 0 };
+    const m = modelMeta(subject);
+    return { x: 0, y: m.eyeY - 0.035, z: 0.03 };
+  }
   return { x: 0, y: PRODUCT_Y[subject.type] ?? 1.05, z: 0 };
 }
 const PRODUCT_Y = { spheres: 0.985, bottle: 1.08, vase: 1.08, shaker: 1.04 };

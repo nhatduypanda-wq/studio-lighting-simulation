@@ -1,13 +1,14 @@
 import { t, getLang, setLang } from './i18n.js';
 import {
   LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
+  MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
   APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
   defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA,
 } from './data.js';
 import { Diagram, LIMITS } from './diagram.js';
 
 const $ = (id) => document.getElementById(id);
-const STORE = 'sl.state.v1';
+const STORE = 'sl.state.v2';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -77,7 +78,7 @@ function setPolar(item, d, a) {
 
 function applyPreset(id) {
   const p = PRESETS[id]; if (!p) return;
-  const dy = subjectTarget(state.subject).y - 1.57;
+  const dy = subjectTarget(state.subject).y - PRESET_FACE_Y;
   state.items = p.items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
   if (p.camera) Object.assign(state.camera, p.camera);
   else Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600 });
@@ -239,10 +240,25 @@ function paneSubject() {
     layout(); commit({ rebuild: true });
   }));
   if (s.type === 'portrait') {
-    f.append(select(t('skin'), s.skin, Object.keys(SKIN_TONES).map((k) => [k, t('skin.' + k)]), chg((v) => { s.skin = v; })));
-    f.append(select(t('pose'), s.pose, [['standing', t('pose.standing')], ['seated', t('pose.seated')]], (v) => { const b = subjectTarget(s).y; s.pose = v; shiftHeights(b); commit({ rebuild: true }); }));
+    // changing the model changes the subject's height: keep lights and camera relative to the face
+    const rebuild = (fn) => (v) => { const before = subjectTarget(s).y; fn(v); shiftHeights(before); commit({ rebuild: true }); };
+    f.append(select(t('model'), s.model, MODELS.map((k) => [k, t('model.' + k)]), rebuild((v) => {
+      s.model = v;
+      if (v !== 'scan' && !modelMeta(s).hair.includes(s.hair) && s.hair !== 'none') s.hair = modelMeta(s).hair[0];
+    })));
+    if (s.model === 'scan') {
+      f.append(select(t('skin'), s.skin, Object.keys(SKIN_TONES).map((k) => [k, t('skin.' + k)]), chg((v) => { s.skin = v; })));
+    } else {
+      f.append(select(t('look'), s.eth, LOOKS.map((k) => [k, t('look.' + k)]), rebuild((v) => { s.eth = v; })));
+      f.append(select(t('age'), s.age, AGES.map((k) => [k, t('age.' + k)]), rebuild((v) => { s.age = v; })));
+      f.append(select(t('hair'), s.hair, [...modelMeta(s).hair.map((k) => [k, t('hair.' + k)]), ['none', t('hair.none')]], chg((v) => { s.hair = v; })));
+      f.append(select(t('hairColor'), s.hairColor, Object.keys(HAIR_COLORS).map((k) => [k, t('hc.' + k)]), chg((v) => { s.hairColor = v; })));
+      f.append(select(t('eyes'), s.eyes, EYE_COLORS.map((k) => [k, t('eye.' + k)]), chg((v) => { s.eyes = v; })));
+      f.append(select(t('clothes'), s.clothes, Object.keys(CLOTHES_COLORS).map((k) => [k, t('cc.' + k)]), chg((v) => { s.clothes = v; })));
+    }
     f.append(slider(t('headYaw'), s.yaw, -70, 70, 1, fmtDeg, chg((v) => { s.yaw = v; })));
     f.append(slider(t('headPitch'), s.pitch, -25, 25, 1, fmtDeg, chg((v) => { s.pitch = v; })));
+    if (s.model !== 'scan') f.append(slider(t('headTilt'), s.tilt || 0, -25, 25, 1, fmtDeg, chg((v) => { s.tilt = v; })));
   } else {
     f.append(slider(t('rotate'), s.rot, -180, 180, 1, fmtDeg, chg((v) => { s.rot = v; })));
     f.append(select(t('table'), s.table, ['white', 'black', 'wood'].map((k) => [k, t('table.' + k)]), chg((v) => { s.table = v; })));

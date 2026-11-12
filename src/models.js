@@ -1,7 +1,7 @@
 // Procedural studio geometry: room, backdrop, light rigs, reflectors and subjects.
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
-import { ROOM, MODIFIERS, PANELS, PANEL_SURFACES, SKIN_TONES, modSpec } from './data.js';
+import { ROOM, MODIFIERS, PANELS, PANEL_SURFACES, SKIN_TONES, HAIR_COLORS, CLOTHES_COLORS, modSpec, modelKey, modelMeta } from './data.js';
 
 // Diffuse image-based light comes from a second probe that excludes the lamp faces
 // (lamps light surfaces through shadowed spot lights instead), so every physical
@@ -303,6 +303,7 @@ function buildPortrait(onReady) {
   const pivot = new THREE.Group();
   lift.add(pivot);
   const skin = phys({ color: 0xffffff, roughness: 0.5, specularIntensity: 0.75, sheen: 0.25, sheenRoughness: 0.5, sheenColor: 0x552a22 });
+  skin.defines.USE_SKIN = '';
   // The garment is a second copy of the scan pushed out along its normals and cut at a crew neckline.
   const shirt = phys(clothProps);
   shirt.onBeforeCompile = (shader) => {
@@ -330,7 +331,7 @@ function buildPortrait(onReady) {
   shadowed(root);
 
   const update = (s) => {
-    const top = s.pose === 'seated' ? 1.28 : 1.7;
+    const top = 1.7;
     lift.position.y = top - 0.3;
     const ph = Math.max(0.05, lift.position.y - 0.62);
     pole.scale.y = ph; pole.position.y = ph / 2;
@@ -401,8 +402,122 @@ function buildProduct(type) {
   return { group: root, update };
 }
 
-export function buildSubject(type, onReady) {
-  return type === 'portrait' ? buildPortrait(onReady) : buildProduct(type);
+// ---- MakeHuman portrait models ------------------------------------------------------
+// Each GLB holds body, eyes, brows, lashes, clothes and several hair meshes. A `_turn`
+// vertex attribute (0..1) says how much a vertex follows the head; the rotation is applied
+// in the vertex shader so the neck bends smoothly without a skeleton.
+
+const glbCache = new Map();
+function loadGLB(url) {
+  if (!glbCache.has(url)) {
+    glbCache.set(url, new Promise((resolve, reject) => new GLTFLoader().load(url, (g) => {
+      const out = {};
+      g.scene.traverse((o) => { if (o.isMesh) { o.geometry.userData.shared = true; out[o.name] = o.geometry; } });
+      resolve(out);
+    }, undefined, reject)));
+  }
+  return glbCache.get(url);
+}
+const texCache = new Map();
+function tex(name, srgb = true) {
+  if (!texCache.has(name)) {
+    const t = new THREE.TextureLoader().load('assets/models/tex/' + name);
+    t.flipY = false; t.anisotropy = 8;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    texCache.set(name, t);
+  }
+  return texCache.get(name);
+}
+
+const TURN_PARS = `
+attribute float _turn;
+uniform vec3 uTurn;
+uniform vec3 uPivot;
+mat3 turnMat( float w ) {
+  float y = uTurn.x * w, p = uTurn.y * w, r = uTurn.z * w;
+  float cy = cos( y ), sy = sin( y ), cp = cos( p ), sp = sin( p ), cr = cos( r ), sr = sin( r );
+  mat3 ry = mat3( cy, 0.0, -sy, 0.0, 1.0, 0.0, sy, 0.0, cy );
+  mat3 rx = mat3( 1.0, 0.0, 0.0, 0.0, cp, sp, 0.0, -sp, cp );
+  mat3 rz = mat3( cr, sr, 0.0, -sr, cr, 0.0, 0.0, 0.0, 1.0 );
+  return ry * rx * rz;
+}`;
+function withTurn(mat, U, isStd = true) {
+  mat.onBeforeCompile = (shader) => {
+    if (isStd) shader.uniforms.envMapDiffuse = envDiffuse;
+    shader.uniforms.uTurn = U.uTurn; shader.uniforms.uPivot = U.uPivot;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\n' + TURN_PARS)
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nobjectNormal = turnMat( _turn ) * objectNormal;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed = turnMat( _turn ) * ( transformed - uPivot ) + uPivot;');
+  };
+  return mat;
+}
+function turnDepth(U, map) {
+  const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+  if (map) { m.map = map; m.alphaTest = 0.3; }
+  return withTurn(m, U, false);
+}
+
+function buildModel(s, onReady) {
+  const root = new THREE.Group();
+  const meta = modelMeta(s);
+  const U = { uTurn: { value: new THREE.Vector3() }, uPivot: { value: new THREE.Vector3(meta.neck[0], meta.neck[1], meta.neck[2]) } };
+  const skinTex = tex(`skin_${modelKey(s)}.jpg`);
+  const M = {
+    skin: withTurn(new THREE.MeshPhysicalMaterial({ map: skinTex, bumpMap: skinTex, bumpScale: 0.35, roughness: 0.48, specularIntensity: 0.8, sheen: 0.2, sheenRoughness: 0.5, sheenColor: 0x4a2620 }), U),
+    eyes: withTurn(new THREE.MeshPhysicalMaterial({ roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.03, alphaTest: 0.5 }), U),
+    brows: withTurn(new THREE.MeshStandardMaterial({ map: tex('brows.png'), roughness: 0.7, alphaTest: 0.12, alphaToCoverage: true, side: THREE.DoubleSide }), U),
+    lashes: withTurn(new THREE.MeshStandardMaterial({ map: tex('lashes.png'), color: 0x0a0a0a, roughness: 0.7, alphaTest: 0.35, alphaToCoverage: true, side: THREE.DoubleSide }), U),
+    hair: withTurn(new THREE.MeshPhysicalMaterial({ roughness: 0.42, sheen: 0.6, sheenRoughness: 0.35, alphaTest: 0.18, alphaToCoverage: true, side: THREE.DoubleSide }), U),
+    clothes: withTurn(new THREE.MeshPhysicalMaterial({ map: tex(`clothes_${s.model}.jpg`), normalMap: tex(`clothes_${s.model}_n.jpg`, false), roughness: 0.9, sheen: 0.35, sheenRoughness: 0.6, sheenColor: 0x555555, side: THREE.DoubleSide }), U),
+  };
+  M.skin.defines.USE_SKIN = '';
+  const depth = turnDepth(U);
+  const hairMeshes = {};
+  let hairTexName = null;
+  let current = s;
+
+  const apply = (st) => {
+    current = st;
+    U.uTurn.value.set((st.yaw || 0) * Math.PI / 180, (st.pitch || 0) * Math.PI / 180, (st.tilt || 0) * Math.PI / 180);
+    const hc = HAIR_COLORS[st.hairColor] ?? HAIR_COLORS.black;
+    M.hair.color.setHex(hc); M.hair.sheenColor.setHex(hc).multiplyScalar(1.6).addScalar(0.04);
+    M.brows.color.setHex(hc).multiplyScalar(0.7);
+    M.clothes.color.setHex(CLOTHES_COLORS[st.clothes] ?? CLOTHES_COLORS.charcoal);
+    const eyeTex = tex(`eye_${st.eyes || 'brown'}.png`);
+    if (M.eyes.map !== eyeTex) { M.eyes.map = eyeTex; M.eyes.needsUpdate = true; }
+    for (const k in hairMeshes) hairMeshes[k].visible = k === st.hair;
+    const hm = hairMeshes[st.hair];
+    if (hm && hairTexName !== st.hair) {
+      hairTexName = st.hair;
+      M.hair.map = tex(`hair_${st.hair}.png`); M.hair.needsUpdate = true;
+      hm.customDepthMaterial = turnDepth(U, M.hair.map);
+    }
+  };
+
+  loadGLB(`assets/models/${modelKey(s)}.glb`).then((geo) => {
+    const add = (name, mat, cast = true) => {
+      if (!geo[name]) return null;
+      const m = new THREE.Mesh(geo[name], mat);
+      m.castShadow = cast; m.receiveShadow = true; m.customDepthMaterial = depth; m.frustumCulled = false;
+      root.add(m); return m;
+    };
+    add('body', M.skin); add('eyes', M.eyes, false); add('clothes', M.clothes);
+    const b = add('brows', M.brows, false); if (b) b.customDepthMaterial = undefined;
+    const l = add('lashes', M.lashes, false); if (l) l.customDepthMaterial = undefined;
+    for (const name in geo) if (name.startsWith('hair_')) { const h = add(name, M.hair); h.visible = false; hairMeshes[name.slice(5)] = h; }
+    apply(current);
+    onReady && onReady();
+  }).catch((e) => console.warn('model failed to load', e));
+
+  return { group: root, update: apply };
+}
+
+export const subjectSig = (s) => (s.type === 'portrait' ? `portrait|${s.model === 'scan' ? 'scan' : modelKey(s)}` : s.type);
+
+export function buildSubject(s, onReady) {
+  if (s.type !== 'portrait') return buildProduct(s.type);
+  return s.model === 'scan' ? buildPortrait(onReady) : buildModel(s, onReady);
 }
 
 export function disposeTree(obj) {
