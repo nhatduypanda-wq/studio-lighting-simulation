@@ -102,6 +102,7 @@ def subtree(root_name):
 
 
 ARM = {'L': subtree('upperarm01.L____head'), 'R': subtree('upperarm01.R____head')}
+ARM_LOW = {s: subtree(f'lowerarm01.{s}____head') for s in 'LR'}
 LEG_UP = {s: subtree(f'upperleg01.{s}____head') for s in 'LR'}
 LEG_LOW = {s: subtree(f'lowerleg01.{s}____head') for s in 'LR'}
 HEAD = subtree('head____head')
@@ -133,6 +134,44 @@ def pose_arms(V, skin_i, skin_w, pivots):
     return out
 
 
+def rot_y(deg):
+    a = np.radians(deg); c, s = np.cos(a), np.sin(a)
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+
+
+# Arm poses on top of the lowered arms: (shoulder rotation, elbow rotation) for the left arm
+# as lists of (axis, degrees) applied in order; the right arm mirrors the z and y rotations.
+ARM_POSES = {
+    # the forearm already points forward and slightly outward in the rest pose, so swinging
+    # it about the vertical axis brings the hand in towards the body
+    'hips': ([('z', 34), ('x', 10)], [('y', -100), ('z', -62)]),
+    'front': ([('x', -8), ('z', -4)], [('y', -80)]),
+}
+
+
+def _rot(seq, mirror):
+    R = np.eye(3)
+    for axis, deg in seq:
+        d = -deg if (mirror and axis in 'zy') else deg
+        R = {'x': rot_x, 'y': rot_y, 'z': rot_z}[axis](d) @ R
+    return R
+
+
+def pose_arm_extra(V, V_morph, pivots, name):
+    """Bend the already lowered arms into one of ARM_POSES."""
+    out = V.copy()
+    for side, sign in (('L', -1.0), ('R', 1.0)):
+        sh = pivots[side]
+        elbow = (joint(V_morph, f'lowerarm01.{side}____head') - sh) @ rot_z(sign * ARM_DOWN_DEG).T + sh
+        Ru, Rl = _rot(ARM_POSES[name][0], side == 'R'), _rot(ARM_POSES[name][1], side == 'R')
+        w_low = bone_weight(SKIN_I, SKIN_W, ARM_LOW[side])[:, None]
+        w_up = bone_weight(SKIN_I, SKIN_W, ARM[side])[:, None] - w_low
+        upper = (V - sh) @ Ru.T + sh
+        lower = (((V - elbow) @ Rl.T + elbow) - sh) @ Ru.T + sh
+        out += w_up * (upper - V) + w_low * (lower - V)
+    return out
+
+
 def rot_x(deg):
     a = np.radians(deg); c, s = np.cos(a), np.sin(a)
     return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
@@ -157,12 +196,13 @@ def write_glb(path, meshes):
     bin_parts, views, accessors, gl_meshes, nodes = [], [], [], [], []
     offset = 0
 
-    def add(arr, target, comp, typ, minmax=False):
+    def add(arr, target, comp, typ, minmax=False, normalized=False):
         nonlocal offset
         b = arr.tobytes(); pad = (-len(b)) % 4
         views.append({'buffer': 0, 'byteOffset': offset, 'byteLength': len(b), 'target': target})
         bin_parts.append(b + b'\0' * pad); offset += len(b) + pad
         acc = {'bufferView': len(views) - 1, 'componentType': comp, 'count': len(arr), 'type': typ}
+        if normalized: acc['normalized'] = True
         if minmax: acc['min'] = arr.min(0).tolist(); acc['max'] = arr.max(0).tolist()
         accessors.append(acc)
         return len(accessors) - 1
@@ -176,6 +216,12 @@ def write_glb(path, meshes):
         }
         for key, attr in (('seatpos', '_SEATPOS'), ('seatnrm', '_SEATNRM'), ('smile', '_SMILE')):
             if key in m: attrs[attr] = add(m[key].astype('<f4'), 34962, 5126, 'VEC3')
+        # arm poses are stored compactly as offsets from the standing pose:
+        # positions as normalised int16 (metres), normals as normalised int8 (half the offset)
+        for pose in ARM_POSES:
+            if pose + '_dp' in m:
+                attrs[f'_ARM_{pose.upper()}_P'] = add(np.clip(np.round(m[pose + '_dp'] * 32767), -32767, 32767).astype('<i2'), 34962, 5122, 'VEC3', normalized=True)
+                attrs[f'_ARM_{pose.upper()}_N'] = add(np.clip(np.round(m[pose + '_dn'] * 0.5 * 127), -127, 127).astype('i1'), 34962, 5120, 'VEC3', normalized=True)
         big = len(m['pos']) > 65535
         ind = add(m['idx'].astype('<u4' if big else '<u2').reshape(-1), 34963, 5125 if big else 5123, 'SCALAR')
         gl_meshes.append({'name': m['name'], 'primitives': [{'attributes': attrs, 'indices': ind}]})
@@ -264,6 +310,7 @@ for g in GENDERS:
             return m
 
         Vs = pose_seat(Vp, Vm)
+        Varm = {name: pose_arm_extra(Vp, Vm, pivots, name) for name in ARM_POSES}
         seat_floor = Vs[[v for vi, uv, m in BASE_POLYS if m == BODY_MAT for v in vi]][:, 1].min()
         smile_idx, smile_d = load_target(f'expression/units/{ETHNIC[e]}/mouth-corner-puller.target')
         Dsmile = np.zeros_like(Vm); Dsmile[smile_idx] = smile_d
@@ -284,12 +331,20 @@ for g in GENDERS:
                 seat = build_mesh(name, Pseat, polys, PUV, pturn)
                 mesh['seatpos'] = (seat['pos'] + seat['nrm'] * 0.06 - [0, floor, 0]) * SCALE
                 mesh['seatnrm'] = seat['nrm']
+                for name, Va in Varm.items():
+                    _, Pa, _, _, _ = fit_proxy(os.path.join(PUB, 'proxies', rel), Vm, Va)
+                    am = build_mesh(name, Pa, polys, PUV, pturn)
+                    mesh[name + '_dp'] = (am['pos'] + am['nrm'] * 0.06 - mesh['pos']) * SCALE
+                    mesh[name + '_dn'] = am['nrm'] - mesh['nrm']
             meshes.append(finish(mesh))
         # body with the faces under the clothes removed
         keep = lambda vi, mat: mat == BODY_MAT and not all(dele[v] for v in vi)
         body = build_mesh('body', Vp, BASE_POLYS, BASE_UV, BODY_TURN, keep=keep)
         seat = build_mesh('body', Vs, BASE_POLYS, BASE_UV, BODY_TURN, keep=keep)
         body['seatpos'] = (seat['pos'] - [0, floor, 0]) * SCALE; body['seatnrm'] = seat['nrm']
+        for name, Va in Varm.items():
+            am = build_mesh('body', Va, BASE_POLYS, BASE_UV, BODY_TURN, keep=keep)
+            body[name + '_dp'] = (am['pos'] - body['pos']) * SCALE; body[name + '_dn'] = am['nrm'] - body['nrm']
         body['smile'] = build_mesh('body', Dsmile, BASE_POLYS, BASE_UV, BODY_TURN, keep=keep)['pos'] * SCALE
         meshes.append(finish(body))
         key = f'{g}_{e}_{age}'
@@ -298,7 +353,7 @@ for g in GENDERS:
         neck = (joint(Vp, 'neck02____head') - [0, floor, 0]) * SCALE
         top = meshes[-1]['pos'][:, 1].max()
         meta[key] = {'eyeY': round(float(eyes_pos[:, 1].mean()), 4), 'eyeZ': round(float(eyes_pos[:, 2].max()), 4),
-                     'neck': [round(float(x), 4) for x in neck], 'top': round(float(top), 4), 'hair': HAIR[g],
+                     'neck': [round(float(x), 4) for x in neck], 'top': round(float(top), 4), 'hair': HAIR[g], 'arms': list(ARM_POSES),
                      'seatDrop': round(float((seat_floor - floor) * SCALE), 4),
                      'seatY': round(float((min(joint(Vm, 'upperleg01.L____head')[1], joint(Vm, 'upperleg01.R____head')[1]) - floor) * SCALE - 0.1), 4)}
         print(key, 'verts', sum(len(m['pos']) for m in meshes), os.path.getsize(os.path.join(OUT, key + '.glb')) // 1024, 'KB', meta[key])

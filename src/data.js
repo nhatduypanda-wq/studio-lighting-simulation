@@ -78,6 +78,7 @@ export const SUBJECTS = ['portrait', 'material', 'spheres', 'bottle', 'vase', 's
 export const MODELS = ['female', 'male', 'scan'];
 export const LOOKS = ['asi', 'cau', 'afr'];
 export const AGES = ['young', 'old'];
+export const ARM_POSES = ['down', 'hips', 'front'];
 export const HAIR_COLORS = { black: 0x0b0a09, darkbrown: 0x24160d, brown: 0x4a2f1c, blonde: 0xb39160, red: 0x74331a, grey: 0x8e8e8e, white: 0xdcdcdc };
 export const EYE_COLORS = ['brown', 'blue', 'green'];
 export const CLOTHES_COLORS = { charcoal: 0x3a3a40, black: 0x121212, white: 0xe6e6e6, navy: 0x1d2946, red: 0x7c1d24, beige: 0xb9a688 };
@@ -110,7 +111,7 @@ export function defaultState() {
   const st = {
     v: 1,
     view: 'camera',
-    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, pose: 'standing', smile: 0, glasses: false, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
+    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, pose: 'standing', arms: 'down', smile: 0, glasses: false, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
     set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray', kind: 'paper', roomLux: 0, roomK: 3000, room: 'medium', floor: 'concrete' },
     camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false, autoAvoid: true },
     items: PRESETS.rembrandt.items(),

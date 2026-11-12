@@ -1,7 +1,7 @@
 import { t, getLang, setLang } from './i18n.js';
 import {
   LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
-  GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, ROOM, ROOMS, FLOORS, MOUNTS, setRoom, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
+  ARM_POSES, GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, ROOM, ROOMS, FLOORS, MOUNTS, setRoom, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
   APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
   defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA, avoidCamera,
 } from './data.js';
@@ -11,7 +11,7 @@ import { LESSONS, applyLesson } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '6.3';
+const APP_VERSION = '6.4';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -326,6 +326,7 @@ function paneSubject() {
       f.append(select(t('look'), s.eth, LOOKS.map((k) => [k, t('look.' + k)]), rebuild((v) => { s.eth = v; })));
       f.append(select(t('age'), s.age, AGES.map((k) => [k, t('age.' + k)]), rebuild((v) => { s.age = v; })));
       f.append(select(t('pose'), s.pose || 'standing', [['standing', t('pose.standing')], ['seated', t('pose.seated')]], rebuild((v) => { s.pose = v; })));
+      f.append(select(t('arms'), s.arms || 'down', ARM_POSES.map((k) => [k, t('arms.' + k)]), chg((v) => { s.arms = v; })));
       f.append(slider(t('smile'), s.smile || 0, 0, 100, 5, (v) => `${v}%`, chg((v) => { s.smile = v; })));
       f.append(check(t('glasses'), s.glasses, chg((v) => { s.glasses = v; })));
       f.append(select(t('hair'), s.hair, [...modelMeta(s).hair.map((k) => [k, t('hair.' + k)]), ['none', t('hair.none')]], chg((v) => { s.hair = v; })));

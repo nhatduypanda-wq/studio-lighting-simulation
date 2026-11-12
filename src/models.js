@@ -745,10 +745,23 @@ function buildModel(s, onReady) {
     glasses.visible = !!st.glasses;
     const seated = st.pose === 'seated';
     figure.position.y = seated ? -meta.seatDrop : 0; stool.visible = seated;
+    // Pose = standing vertices + (seated - standing) + arm offsets. Legs and arms move
+    // different vertices, so the offsets simply add. Recomputed only when the pose changes.
+    const arm = st.arms && st.arms !== 'down' ? st.arms : null, poseKey = `${seated}|${arm}`;
     for (const m of posed) {
-      const g = m.geometry, stand = g.userData.stand || (g.userData.stand = { position: g.attributes.position, normal: g.attributes.normal });
-      const pos = seated ? g.attributes._seatpos : stand.position, nrm = seated ? g.attributes._seatnrm : stand.normal;
-      if (g.attributes.position !== pos) { g.setAttribute('position', pos); g.setAttribute('normal', nrm); }
+      const g = m.geometry, A = g.attributes;
+      const stand = g.userData.stand || (g.userData.stand = { position: A.position, normal: A.normal });
+      if (g.userData.poseKey === poseKey) continue;
+      g.userData.poseKey = poseKey;
+      const n = stand.position.count, P = new Float32Array(stand.position.array), N = new Float32Array(stand.normal.array);
+      if (seated) { P.set(A._seatpos.array); N.set(A._seatnrm.array); }
+      const ap = arm && A[`_arm_${arm}_p`], an = arm && A[`_arm_${arm}_n`];
+      if (ap) for (let i = 0; i < n; i++) {
+        P[i * 3] += ap.getX(i); P[i * 3 + 1] += ap.getY(i); P[i * 3 + 2] += ap.getZ(i);
+        const x = N[i * 3] + an.getX(i) * 2, y = N[i * 3 + 1] + an.getY(i) * 2, z = N[i * 3 + 2] + an.getZ(i) * 2, l = Math.hypot(x, y, z) || 1;
+        N[i * 3] = x / l; N[i * 3 + 1] = y / l; N[i * 3 + 2] = z / l;
+      }
+      g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(N, 3));
     }
     const hc = HAIR_COLORS[st.hairColor] ?? HAIR_COLORS.black;
     M.hair.color.setHex(hc); M.hair.sheenColor.setHex(hc).multiplyScalar(1.6).addScalar(0.04);

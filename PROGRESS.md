@@ -16,28 +16,13 @@ Lưu ý khi thử: path tracing rất nặng trên máy giả lập không có G
 
 Chưa kiểm tra bằng mắt: gobo trong chế độ chất lượng cao (tấm chắn có lỗ trước optical spot).
 
-## Giai đoạn 6 (đang làm, nhánh `phase-6`; người dùng yêu cầu chạy liên tục đến hết 13/11/2026 giờ VN)
+## Giai đoạn 6 — XONG toàn bộ (1a–1d, 2a–2c, 3a–3b, 4a–4e, 5a), đã gộp vào `main`, phiên bản 6.4
 
-Thứ tự người dùng duyệt: 1 → 2 → 3 (chân dung trước) → 4 (làm hết, bỏ qua cảm biến) → 5. Mỗi việc xong: thử, [x], commit, gộp main.
+Ghi chú kỹ thuật:
+- Pháp tuyến phông giấy từng bị ngược khiến đèn đặt gần phông bị tính là trong bóng; đã sửa ở 6.1.
+- Tư thế: thân và quần áo có `_seatpos/_seatnrm` (float) và `_arm_<pose>_p/_n` (offset nén int16/int8); app cộng offset trên CPU (models.js, `apply`).
+- Đèn phòng chưa có trong chế độ chất lượng cao (path tracer không có ambient light).
 
-1. Bố cục + chủ thể
-- [x] 1a. Bố cục chân dung: broad, short, high-key, low-key (data.js PRESETS + i18n)
-- [x] 1b. Kính mắt cho người mẫu (models.js buildModel: gọng + tròng kính phản chiếu, theo đầu bằng _turn=1)
-- [x] 1c. Bố cục sản phẩm: bright-field, dark-field (thủy tinh), tent lighting (kim loại)
-- [x] 1d. Chủ thể mới: đồng hồ, nhẫn, hộp mỹ phẩm bóng, đồ ăn (đơn giản), bảng màu
-2. Ánh sáng môi trường
-- [x] 2a. Ánh sáng phòng (mức + nhiệt độ màu) — là ánh sáng liên tục nên phụ thuộc tốc độ màn trập; bài học "cân bằng flash với nền"
-- [x] 2b. Đèn cửa sổ (nguồn sáng lớn liên tục 5600–6500 K đặt ở tường) 
-- [x] 2c. Đèn modeling của flash (bật/tắt, liên tục, yếu)
-3. Lưu / chia sẻ
-- [x] 3a. Lưu nhiều bố cục có tên (localStorage), tải lại, xóa
-- [x] 3b. Chia sẻ bố cục qua link (state nén trong #hash)
-4. Không gian + tiện ích
-- [x] 4a. Sàn: bê tông / gỗ / bóng; phông vải muslin, vinyl
-- [x] 4b. Kích thước phòng chỉnh được
-- [x] 4c. Boom/C-stand (kiểu chân: thường / boom / treo trần / tự động)
-- [x] 4d. Lều chụp sản phẩm; cucoloris
-- [x] 4e. Phóng to xem catchlight; minh họa family of angles
-5. Người mẫu
-- [ ] 5a. Tư thế tay (build_models.py: thêm vài tư thế tay dạng thuộc tính như _SEATPOS)
-
+## Việc tiếp theo (chờ người dùng duyệt)
+- Cần người dùng xác nhận trên thiết bị thật: tốc độ trên iPhone/iPad, chế độ chất lượng cao có chạy được không, app có tự cập nhật từ bản 5.1 trở đi không.
+- Ý tưởng thêm: nhiều biểu cảm (nhắm mắt, nhướng mày), mẫu trẻ em, thử thách cho sản phẩm, đèn phòng trong chế độ chất lượng cao.

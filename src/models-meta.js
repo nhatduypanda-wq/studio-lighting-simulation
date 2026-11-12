@@ -15,6 +15,10 @@ export const MODEL_META = {
    "ponytail01",
    "short03"
   ],
+  "arms": [
+   "hips",
+   "front"
+  ],
   "seatDrop": 0.3637,
   "seatY": 0.7218
  },
@@ -32,6 +36,10 @@ export const MODEL_META = {
    "long01",
    "ponytail01",
    "short03"
+  ],
+  "arms": [
+   "hips",
+   "front"
   ],
   "seatDrop": 0.3371,
   "seatY": 0.6638
@@ -51,6 +59,10 @@ export const MODEL_META = {
    "ponytail01",
    "short03"
   ],
+  "arms": [
+   "hips",
+   "front"
+  ],
   "seatDrop": 0.3784,
   "seatY": 0.7556
  },
@@ -68,6 +80,10 @@ export const MODEL_META = {
    "long01",
    "ponytail01",
    "short03"
+  ],
+  "arms": [
+   "hips",
+   "front"
   ],
   "seatDrop": 0.3577,
   "seatY": 0.719
@@ -87,6 +103,10 @@ export const MODEL_META = {
    "ponytail01",
    "short03"
   ],
+  "arms": [
+   "hips",
+   "front"
+  ],
   "seatDrop": 0.3403,
   "seatY": 0.6808
  },
@@ -105,6 +125,10 @@ export const MODEL_META = {
    "ponytail01",
    "short03"
   ],
+  "arms": [
+   "hips",
+   "front"
+  ],
   "seatDrop": 0.3717,
   "seatY": 0.75
  },
@@ -121,6 +145,10 @@ export const MODEL_META = {
    "short02",
    "short04",
    "short01"
+  ],
+  "arms": [
+   "hips",
+   "front"
   ],
   "seatDrop": 0.4159,
   "seatY": 0.8333
@@ -139,6 +167,10 @@ export const MODEL_META = {
    "short04",
    "short01"
   ],
+  "arms": [
+   "hips",
+   "front"
+  ],
   "seatDrop": 0.3873,
   "seatY": 0.7531
  },
@@ -155,6 +187,10 @@ export const MODEL_META = {
    "short02",
    "short04",
    "short01"
+  ],
+  "arms": [
+   "hips",
+   "front"
   ],
   "seatDrop": 0.4117,
   "seatY": 0.871
@@ -173,6 +209,10 @@ export const MODEL_META = {
    "short04",
    "short01"
   ],
+  "arms": [
+   "hips",
+   "front"
+  ],
   "seatDrop": 0.3842,
   "seatY": 0.8162
  },
@@ -190,6 +230,10 @@ export const MODEL_META = {
    "short04",
    "short01"
   ],
+  "arms": [
+   "hips",
+   "front"
+  ],
   "seatDrop": 0.3557,
   "seatY": 0.7363
  },
@@ -206,6 +250,10 @@ export const MODEL_META = {
    "short02",
    "short04",
    "short01"
+  ],
+  "arms": [
+   "hips",
+   "front"
   ],
   "seatDrop": 0.3868,
   "seatY": 0.8545
