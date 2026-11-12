@@ -18,8 +18,8 @@ export class Diagram {
   }
 
   _fit() {
-    const r = this.c.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const r = this.fixed || this.c.getBoundingClientRect();
+    const dpr = this.fixed ? 2 : Math.min(window.devicePixelRatio || 1, 2);
     const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
     if (this.c.width !== W || this.c.height !== H) { this.c.width = W; this.c.height = H; }
     this.cssW = r.width; this.cssH = r.height; this.dpr = dpr;
@@ -53,6 +53,16 @@ export class Diagram {
     if (this.drag.cam) this.onMoveCamera(w.x, w.z);
     else this.onMove(this.drag.id, Math.max(-LIMITS.x, Math.min(LIMITS.x, w.x)), Math.max(LIMITS.zMin, Math.min(LIMITS.zMax, w.z)));
     e.preventDefault();
+  }
+
+  // Draw the diagram into a new canvas of the given CSS size (used for export).
+  toCanvas(width, height) {
+    const keep = [this.c, this.ctx];
+    this.c = document.createElement('canvas'); this.ctx = this.c.getContext('2d'); this.fixed = { width, height };
+    this.draw();
+    const out = this.c;
+    [this.c, this.ctx] = keep; this.fixed = null; this.draw();
+    return out;
   }
 
   draw() {

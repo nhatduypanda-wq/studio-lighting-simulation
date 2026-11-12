@@ -134,15 +134,20 @@ export class Engine {
       transparent: true, depthTest: false, depthWrite: false, toneMapped: false,
     });
     this.showMat = new THREE.ShaderMaterial({
-      uniforms: { tex: { value: null }, clip: { value: 0 } },
+      uniforms: { tex: { value: null }, clip: { value: 0 }, falseColor: { value: 0 } },
       vertexShader: QUAD_VS,
-      fragmentShader: `uniform sampler2D tex; uniform float clip; varying vec2 vUv;
+      fragmentShader: `uniform sampler2D tex; uniform float clip; uniform float falseColor; varying vec2 vUv;
         void main(){
           vec3 c = texture2D(tex, vUv).rgb;
           gl_FragColor = vec4(c, 1.0);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
-          if (clip > 0.5) {
+          if (falseColor > 0.5) {
+            // exposure in stops relative to middle grey (18 %)
+            float st = log2(max(dot(c, vec3(0.2126, 0.7152, 0.0722)), 1e-5) / 0.18);
+            gl_FragColor.rgb = st < -5.0 ? vec3(0.25, 0.0, 0.4) : st < -3.0 ? vec3(0.0, 0.1, 0.7) : st < -1.5 ? vec3(0.0, 0.45, 0.75) : st < -0.5 ? vec3(0.35)
+              : st < 0.5 ? vec3(0.15, 0.7, 0.2) : st < 1.5 ? vec3(0.95, 0.6, 0.7) : st < 2.3 ? vec3(0.95, 0.9, 0.2) : vec3(0.9, 0.1, 0.1);
+          } else if (clip > 0.5) {
             float stripe = step(0.5, fract((gl_FragCoord.x + gl_FragCoord.y) / 10.0));
             if (min(c.r, min(c.g, c.b)) > 1.0) gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0, 0.1, 0.1), 0.35 + 0.5 * stripe);
             else if (max(c.r, max(c.g, c.b)) < 0.002) gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.1, 0.3, 1.0), 0.35 + 0.5 * stripe);
@@ -265,6 +270,7 @@ export class Engine {
 
     this.lensRadius = cam.focal / 1000 / (2 * cam.aperture);
     this.showMat.uniforms.clip.value = cam.clip ? 1 : 0;
+    this.showMat.uniforms.falseColor.value = cam.falseColor ? 1 : 0;
     this.invalidate(env);
   }
 

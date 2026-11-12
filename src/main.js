@@ -7,6 +7,7 @@ import {
 } from './data.js';
 import { Diagram, LIMITS } from './diagram.js';
 import { MATERIAL_IDS, SHAPE_IDS } from './materials.js';
+import { LESSONS, applyLesson } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
@@ -171,6 +172,7 @@ function paneLights() {
     state.items.push(it); state.selected = it.id; touched(); commit({ rebuild: true });
   }));
   f.append(add);
+  f.append(el('div', { class: 'btns' }, button(t('exportDiagram'), '', exportDiagram)));
 
   const item = selected();
   if (!item) { f.append(el('p', { class: 'hint' }, t('selectHint'))); return f; }
@@ -233,6 +235,9 @@ function paneCamera() {
   f.append(slider(t('camAngle'), c.angle, -90, 90, 1, fmtDeg, chg((v) => { c.angle = v; }, { env: false })));
   f.append(select(t('aspect'), c.aspect, Object.keys(ASPECTS).map((k) => [k, k]), (v) => { c.aspect = v; layout(); commit({ env: false }); }));
   f.append(check(t('autoAvoid'), c.autoAvoid !== false, chg((v) => { c.autoAvoid = v; })));
+  f.append(check(t('histogram'), c.hist !== false, (v) => { c.hist = v; $('hist').hidden = !v; commit({ env: false }); }));
+  f.append(check(t('falseColor'), c.falseColor, chg((v) => { c.falseColor = v; }, { env: false, rebuild: true })));
+  if (c.falseColor) f.append(el('div', { class: 'note' }, t('falseLegend')));
   f.append(check(t('clip'), c.clip, chg((v) => { c.clip = v; }, { env: false })));
   return f;
 }
@@ -299,8 +304,21 @@ function paneSet() {
   return f;
 }
 
-const PANES = { lights: paneLights, camera: paneCamera, subject: paneSubject, set: paneSet };
-const TABS = ['diagram', 'lights', 'camera', 'subject', 'set'];
+function paneLearn() {
+  const f = document.createDocumentFragment();
+  f.append(el('p', { class: 'hint' }, t('learnIntro')));
+  LESSONS.forEach((ls, i) => {
+    f.append(el('div', { class: 'lesson' },
+      el('h3', {}, `${i + 1}. ${t(`lesson.${ls.id}.t`)}`),
+      el('p', {}, t(`lesson.${ls.id}.b`)),
+      el('p', { class: 'try' }, t('tryIt') + ' ' + t(`lesson.${ls.id}.try`)),
+      button(t('lessonSetup'), 'primary', () => { applyLesson(state, ls); $('preset').value = 'custom'; layout(); commit({ rebuild: true }); })));
+  });
+  return f;
+}
+
+const PANES = { lights: paneLights, camera: paneCamera, subject: paneSubject, set: paneSet, learn: paneLearn };
+const TABS = ['diagram', 'lights', 'camera', 'subject', 'set', 'learn'];
 
 function renderPane() {
   const eff = tab === 'diagram' ? 'lights' : tab;
@@ -324,6 +342,7 @@ function renderChrome() {
   $('aboutBtn').textContent = t('about');
   $('saveBtn').textContent = t('savePhoto');
   if (!hqOn) $('hqBtn').textContent = t('hq');
+  $('abSave').textContent = t('abSave'); $('abView').textContent = t('abView');
   $('aboutTitle').textContent = `${t('appName')} — ${t('tagline')}`;
   $('aboutBody').textContent = t('aboutBody');
   $('aboutClose').textContent = t('close');
@@ -350,7 +369,7 @@ function mountNote(item) {
 // ---- readouts ---------------------------------------------------------------------
 function updateReadouts() {
   const T = subjectTarget(state.subject), cam = state.camera;
-  let H = 0, anyFlash = false;
+  let H = 0, anyFlash = false; const each = [];
   for (const item of state.items) {
     if (item.kind !== 'light') continue;
     const m = meterLight(item, T, cam);
@@ -358,7 +377,7 @@ function updateReadouts() {
     let text = t('meterOff');
     if (m) {
       const lt = LIGHT_TYPES[item.type];
-      H += lt.flash ? m.H : m.H; // already per-exposure
+      H += m.H; each.push(m.H);
       if (lt.flash) anyFlash = true;
       text = m.N < 0.5 ? t('meterNone') : `${fmtF(m.N)} (${fmtEv(m.ev)} EV) · ${fmtM(m.d)}`;
     }
@@ -372,13 +391,18 @@ function updateReadouts() {
   const N = Math.sqrt(H * cam.iso / 250);
   const ev = N > 0 ? 2 * Math.log2(N / cam.aperture) : -99;
   const line = N < 0.5 ? t('meterNone') : t('expoTotal', { f: fmtF(N), ev: fmtEv(ev), n: cam.aperture });
-  const note = $('expoNote'); if (note) note.textContent = `${t('meter')}: ${line}`;
+  each.sort((a, b) => b - a);
+  let ratio = '';
+  if (each.length >= 2 && each[1] > 0) { const r = each[0] / each[1]; ratio = ' ' + t('ratio', { r: r >= 10 ? Math.round(r) : num(r, 1), s: num(Math.log2(r), 1) }); }
+  const note = $('expoNote'); if (note) note.textContent = `${t('meter')}: ${line}.${ratio}`;
   const sync = anyFlash && cam.shutter > SYNC_SPEED;
   const sn = $('syncNote'); if (sn) sn.hidden = !sync;
   $('warn').hidden = !sync; if (sync) $('warn').textContent = t('syncWarn');
   $('hud').textContent = `${cam.focal} mm · f/${cam.aperture} · 1/${cam.shutter} s · ISO ${cam.iso} · ${cam.wb} K` + (N >= 0.5 ? `  |  ${fmtEv(ev)} EV` : '');
   $('hud').hidden = state.view !== 'camera';
-  $('saveBtn').hidden = $('hqBtn').hidden = state.view !== 'camera';
+  $('saveBtn').hidden = $('hqBtn').hidden = $('abSave').hidden = state.view !== 'camera';
+  $('hist').hidden = state.view !== 'camera' || state.camera.hist === false || !!state.camera.falseColor;
+  if (state.view !== 'camera') { $('abImg').hidden = $('abTag').hidden = true; $('abView').hidden = true; } else if ($('abImg').src) $('abView').hidden = false;
 }
 
 // ---- layout ---------------------------------------------------------------------------
@@ -434,6 +458,65 @@ $('saveBtn').addEventListener('click', async () => {
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });
+// ---- histogram ---------------------------------------------------------------------
+const histSrc = document.createElement('canvas'); histSrc.width = histSrc.height = 96;
+function drawHist() {
+  if (state.camera.hist === false || state.view !== 'camera' || state.camera.falseColor) return;
+  const g = histSrc.getContext('2d', { willReadFrequently: true });
+  g.drawImage($('gl'), 0, 0, 96, 96);
+  const d = g.getImageData(0, 0, 96, 96).data, bins = new Float32Array(64);
+  for (let i = 0; i < d.length; i += 4) bins[Math.min(63, (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) >> 2)]++;
+  const h = $('hist'), c = h.getContext('2d'); let mx = 1;
+  for (let i = 1; i < 63; i++) mx = Math.max(mx, bins[i]);
+  c.clearRect(0, 0, 128, 56);
+  for (let i = 0; i < 64; i++) {
+    const v = Math.min(1, bins[i] / mx);
+    c.fillStyle = i === 63 && bins[i] > 46 ? '#e5604d' : i === 0 && bins[i] > 46 ? '#5b8cff' : 'rgba(255,255,255,.8)';
+    c.fillRect(i * 2, 56 - v * 52, 2, v * 52);
+  }
+}
+
+// ---- A/B comparison ----------------------------------------------------------------
+$('abSave').addEventListener('click', async () => {
+  const blob = await engine?.snapshot(); if (!blob) return;
+  if ($('abImg').src) URL.revokeObjectURL($('abImg').src);
+  $('abImg').src = URL.createObjectURL(blob);
+  $('abView').hidden = false;
+});
+$('abView').addEventListener('click', () => {
+  const show = $('abImg').hidden;
+  $('abImg').hidden = $('abTag').hidden = !show;
+  $('abView').classList.toggle('on', show);
+});
+
+// ---- lighting diagram export ---------------------------------------------------------
+function exportDiagram() {
+  const dg = diagram.toCanvas(700, 870);
+  const T = subjectTarget(state.subject), cam = state.camera;
+  const lines = [`${t('appName')} — ${t('tab.diagram')}`, `${t('cam')}: ${cam.focal} mm · f/${cam.aperture} · 1/${cam.shutter} s · ISO ${cam.iso} · ${cam.wb} K · ${fmtM(cam.dist)}`,
+    `${t('subject')}: ${t('subject.' + state.subject.type)} · ${t('backDist')} ${fmtM(state.set.backDist)}`, ''];
+  state.items.forEach((item, i) => {
+    const p = polar(item);
+    let s = `${i + 1}. ${itemTitle(item)} — ${itemSub(item)}`;
+    if (item.kind === 'light') { s += ` — ${fmtPower(item)}`; if (item.gel && item.gel !== 'none') s += ` — ${t('gel')}: ${t('gel.' + item.gel)}`; }
+    lines.push(s);
+    const m = item.kind === 'light' ? meterLight(item, T, cam) : null;
+    lines.push(`     ${fmtM(p.d)} · ${fmtDeg(p.a)} · ${t('height')} ${fmtM(item.h)}` + (m && m.N >= 0.5 ? ` · ${fmtF(m.N)}` : '') + (item.on === false ? ` · ${t('meterOff')}` : ''));
+  });
+  const W = dg.width, lh = 40, out = document.createElement('canvas');
+  out.width = W; out.height = dg.height + lines.length * lh + 60;
+  const g = out.getContext('2d');
+  g.fillStyle = '#1a1b1d'; g.fillRect(0, 0, out.width, out.height);
+  g.drawImage(dg, 0, 0);
+  g.textBaseline = 'top';
+  lines.forEach((ln, i) => { g.font = (i === 0 ? '700 30px ' : '26px ') + '-apple-system, system-ui, sans-serif'; g.fillStyle = i === 0 ? '#f2b33d' : '#ecebe8'; g.fillText(ln, 36, dg.height + 24 + i * lh); });
+  out.toBlob((blob) => {
+    const a = el('a', { href: URL.createObjectURL(blob), download: `lighting-diagram-${Date.now()}.png` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }, 'image/png');
+}
+
 let hqOn = false;
 $('hqBtn').addEventListener('click', async () => {
   if (!engine) return;
@@ -462,10 +545,12 @@ import('./engine.js').then(({ Engine }) => {
   engine.onHQ = (info) => {
     if (!info || info.error) { if (hqOn) hqEnd(info && info.error); return; }
     const done = info.samples >= info.target;
+    if (done || info.samples % 10 === 0) drawHist();
     $('hqBtn').textContent = done ? t('hqDone') : `${t('hqStop')} ${Math.round(100 * info.samples / info.target)}%`;
     $('progress').style.width = done ? '0' : Math.round(100 * info.samples / info.target) + '%';
   };
-  engine.onProgress = (p) => { $('progress').style.width = p >= 1 ? '0' : Math.round(p * 100) + '%'; };
+  let ticks = 0;
+  engine.onProgress = (p) => { $('progress').style.width = p >= 1 ? '0' : Math.round(p * 100) + '%'; if (p >= 1 || ticks++ % 8 === 0) drawHist(); };
   layout();
   engine.sync(state, true);
   engine.start();
