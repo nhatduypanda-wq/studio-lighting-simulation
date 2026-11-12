@@ -26,6 +26,7 @@ python3 -m http.server 8080
 - **Da** (giai đoạn 2): tán xạ dưới da xấp xỉ — mép bóng ngả đỏ ấm, ánh sáng xuyên qua phần mỏng như tai khi chiếu ngược.
 - **Mẫu chất liệu** (giai đoạn 3): 16 chất liệu (cotton, lụa, nhung, da thuộc, gỗ, giấy, nhựa bóng/mờ, cao su, inox xước, chrome, vàng, đồng, thủy tinh trong/mờ, sứ) trên 5 hình dạng, gồm cả tấm vải treo có nếp.
 - **Chụp chất lượng cao** (giai đoạn 3): nút "Chất lượng cao" dựng lại ảnh bằng path tracing — ánh sáng dội thật giữa mọi bề mặt, phản chiếu thật trên kim loại, khúc xạ qua thủy tinh. Đổi bất cứ gì sẽ hủy và quay về xem trực tiếp.
+- **Tự tránh khung hình**: chân đèn lọt vào khung hình thì đèn tự chuyển sang treo trần; đèn hoặc tấm hắt sáng che mất chủ thể thì tự được nâng lên cho tới khi máy ảnh nhìn thấy chủ thể. Tắt được trong tab Máy ảnh.
 - **Chủ thể khác**: bộ cầu tham chiếu (xám 18 %, chrome, trắng, sơn bóng), chai thủy tinh, bình gốm, bình lắc inox.
 - **Đèn**: flash studio 400 Ws, speedlight, LED COB 300 W, LED panel 100 W (tối đa 5 đèn).
 - **Phụ kiện**: chóa tiêu chuẩn, softbox 60×90, octabox 120, stripbox 30×120, dù xuyên, dù phản bạc, beauty dish, snoot, lưới tổ ong.

@@ -3,7 +3,7 @@ import {
   LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
   MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
   APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
-  defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA,
+  defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA, avoidCamera,
 } from './data.js';
 import { Diagram, LIMITS } from './diagram.js';
 import { MATERIAL_IDS, SHAPE_IDS } from './materials.js';
@@ -50,7 +50,12 @@ function fmtPower(item) {
 
 // ---- state changes ------------------------------------------------------------
 let pending = null;
+let avoid = { raised: new Set(), stuck: new Set() };
 function commit({ env = true, rebuild = false } = {}) {
+  // equipment that would hide the subject from the camera is lifted out of the way
+  const res = avoidCamera(state);
+  if (res.changed) { env = true; if (activeTab() === 'lights') rebuild = true; }
+  avoid = res;
   if (rebuild) renderPane();
   pending = { env: env || (pending?.env ?? false) };
   save();
@@ -225,6 +230,7 @@ function paneCamera() {
   f.append(slider(t('camHeight'), c.height, 0.3, 2.6, 0.05, fmtM, chg((v) => { c.height = v; }, { env: false })));
   f.append(slider(t('camAngle'), c.angle, -90, 90, 1, fmtDeg, chg((v) => { c.angle = v; }, { env: false })));
   f.append(select(t('aspect'), c.aspect, Object.keys(ASPECTS).map((k) => [k, k]), (v) => { c.aspect = v; layout(); commit({ env: false }); }));
+  f.append(check(t('autoAvoid'), c.autoAvoid !== false, chg((v) => { c.autoAvoid = v; })));
   f.append(check(t('clip'), c.clip, chg((v) => { c.clip = v; }, { env: false })));
   return f;
 }
@@ -330,6 +336,14 @@ function setTab(k) {
   diagram.draw();
 }
 
+function mountNote(item) {
+  let s = '';
+  if (engine?.rigs.get(item.id)?.hanging) s += ' · ' + t('noteHang');
+  if (avoid.stuck.has(item.id)) s += ' · ' + t('noteBlock');
+  else if (avoid.raised.has(item.id)) s += ' · ' + t('noteRaised');
+  return s;
+}
+
 // ---- readouts ---------------------------------------------------------------------
 function updateReadouts() {
   const T = subjectTarget(state.subject), cam = state.camera;
@@ -345,7 +359,12 @@ function updateReadouts() {
       if (lt.flash) anyFlash = true;
       text = m.N < 0.5 ? t('meterNone') : `${fmtF(m.N)} (${fmtEv(m.ev)} EV) · ${fmtM(m.d)}`;
     }
-    if (node) node.textContent = `${itemSub(item)} · ${text}`;
+    if (node) node.textContent = `${itemSub(item)} · ${text}${mountNote(item)}`;
+  }
+  for (const item of state.items) {
+    if (item.kind !== 'panel') continue;
+    const node = document.querySelector(`[data-meter="${item.id}"]`);
+    if (node) node.textContent = itemSub(item) + mountNote(item);
   }
   const N = Math.sqrt(H * cam.iso / 250);
   const ev = N > 0 ? 2 * Math.log2(N / cam.aperture) : -99;

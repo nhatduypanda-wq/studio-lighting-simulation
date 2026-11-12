@@ -80,16 +80,31 @@ function buildStand() {
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.016, 1, 8), metal);
   pole.name = 'pole';
   g.add(pole);
+  // Tripod base: three legs run from a collar on the pole down and out to the floor,
+  // each tied back to the bottom of the pole by a brace.
+  const legs = new THREE.Group();
+  const strut = (ax, ay, az, bx, by, bz, r) => {
+    const a = new THREE.Vector3(ax, ay, az), b = new THREE.Vector3(bx, by, bz);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, a.distanceTo(b), 6), metal);
+    m.position.copy(a).add(b).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    legs.add(m);
+  };
   for (let i = 0; i < 3; i++) {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.62, 6), metal);
-    const a = (i / 3) * Math.PI * 2;
-    leg.position.set(Math.cos(a) * 0.24, 0.17, Math.sin(a) * 0.24);
-    leg.rotation.set(0, -a, 0);
-    leg.rotateZ(-0.95);
-    g.add(leg);
+    const a = (i / 3) * Math.PI * 2 + 0.5, cx = Math.cos(a), cz = Math.sin(a);
+    strut(0, 0.5, 0, cx * 0.46, 0.012, cz * 0.46, 0.011);
+    strut(0, 0.14, 0, cx * 0.26, 0.225, cz * 0.26, 0.007);
   }
+  // ceiling plate, shown when the lamp hangs from the ceiling instead of standing on the floor
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 16), metal);
+  plate.position.y = ROOM.h - 0.011; plate.visible = false;
+  g.add(legs, plate);
   shadowed(g);
-  g.userData.setHeight = (h) => { h = Math.max(0.2, h); pole.scale.y = h; pole.position.y = h / 2; };
+  g.userData.setHeight = (h) => { h = Math.max(0.6, h); pole.scale.y = h - 0.1; pole.position.y = 0.1 + (h - 0.1) / 2; legs.visible = true; plate.visible = false; };
+  g.userData.setHanging = (yBottom) => {
+    const len = Math.max(0.05, ROOM.h - yBottom);
+    pole.scale.y = len; pole.position.y = yBottom + len / 2; legs.visible = false; plate.visible = true;
+  };
   return g;
 }
 

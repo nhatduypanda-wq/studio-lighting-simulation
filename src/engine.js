@@ -221,6 +221,22 @@ export class Engine {
     }
     this.subject.update(state.subject);
 
+    // camera first: the stands need it to know whether they would show in the frame
+    const cam = state.camera;
+    const aspect = ASPECTS[cam.aspect] || 1;
+    const ss = sensorSize(aspect);
+    this.photoCam.fov = 2 * Math.atan(ss.h / 2 / cam.focal) * 180 / Math.PI;
+    this.photoCam.updateProjectionMatrix();
+    const cp = cameraPose(cam, T);
+    this.camPos = new THREE.Vector3(cp.x, cp.y, cp.z);
+    this.camRig.head.position.copy(this.camPos);
+    this.camRig.head.lookAt(this.target);
+    this.camRig.stand.position.set(cp.x, 0, cp.z);
+    this.camRig.stand.userData.setHeight(cp.y - 0.06);
+    this.photoCam.position.copy(this.camPos); this.photoCam.up.set(0, 1, 0); this.photoCam.lookAt(this.target);
+    this.photoCam.clearViewOffset(); this.photoCam.updateMatrixWorld(true);
+    this.frameMatrix = new THREE.Matrix4().multiplyMatrices(this.photoCam.projectionMatrix, this.photoCam.matrixWorldInverse);
+
     // equipment
     const seen = new Set();
     for (const item of state.items) {
@@ -246,18 +262,6 @@ export class Engine {
     }
     for (const [id, rig] of this.rigs) if (!seen.has(id)) { this._dropRig(rig); this.rigs.delete(id); }
 
-    // camera
-    const cam = state.camera;
-    const aspect = ASPECTS[cam.aspect] || 1;
-    const ss = sensorSize(aspect);
-    this.photoCam.fov = 2 * Math.atan(ss.h / 2 / cam.focal) * 180 / Math.PI;
-    this.photoCam.updateProjectionMatrix();
-    const cp = cameraPose(cam, T);
-    this.camPos = new THREE.Vector3(cp.x, cp.y, cp.z);
-    this.camRig.head.position.copy(this.camPos);
-    this.camRig.head.lookAt(this.target);
-    this.camRig.stand.position.set(cp.x, 0, cp.z);
-    this.camRig.stand.userData.setHeight(cp.y - 0.06);
     this.lensRadius = cam.focal / 1000 / (2 * cam.aperture);
     this.showMat.uniforms.clip.value = cam.clip ? 1 : 0;
     this.invalidate(env);
@@ -307,7 +311,22 @@ export class Engine {
     const fwd = v.c.set(0, 0, 1).applyQuaternion(rig.head.quaternion);
     const sx = rig.head.position.x + fwd.x * off, sz = rig.head.position.z + fwd.z * off, sy = rig.head.position.y + fwd.y * off;
     rig.stand.position.set(sx, 0, sz);
-    rig.stand.userData.setHeight(sy - 0.05);
+    // A floor stand that would show in the photo is swapped for a ceiling mount.
+    rig.hanging = state.camera.autoAvoid !== false && this._standInFrame(sx, sz, sy - 0.05);
+    if (rig.hanging) rig.stand.userData.setHanging(sy + 0.05); else rig.stand.userData.setHeight(sy - 0.05);
+  }
+
+  // True if a floor stand at (x, z) reaching up to `top` would be visible in the camera frame.
+  _standInFrame(x, z, top) {
+    const v = this._v.c, m = this.frameMatrix;
+    if (!m) return false;
+    const test = (px, py, pz) => {
+      v.set(px, py, pz).applyMatrix4(m);
+      return v.z > -1 && v.z < 1 && Math.abs(v.x) < 1.04 && Math.abs(v.y) < 1.04;
+    };
+    for (let y = 0; y <= top; y += 0.08) if (test(x, y, z)) return true;
+    for (let i = 0; i < 3; i++) { const a = (i / 3) * Math.PI * 2; if (test(x + Math.cos(a + 0.5) * 0.46, 0.02, z + Math.sin(a + 0.5) * 0.46)) return true; }
+    return false;
   }
 
   _placeLights(n) {

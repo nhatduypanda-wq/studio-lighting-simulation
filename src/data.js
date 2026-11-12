@@ -73,7 +73,7 @@ export function defaultState() {
     view: 'camera',
     subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
     set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray' },
-    camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false },
+    camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false, autoAvoid: true },
     items: PRESETS.rembrandt.items(),
     selected: null,
   };
@@ -232,4 +232,53 @@ export function sensorSize(aspect) {
   if (aspect >= 1) return { w: 24 * aspect, h: 24 };
   if (aspect > 2 / 3) return { w: 24, h: 24 / aspect };
   return { w: 36 * aspect, h: 36 };
+}
+
+// ---- keeping equipment out of the camera's line of sight -----------------------
+
+function segDist(p, a, b) { // distance from point p to segment a-b, and where along it
+  const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby + (p.z - a.z) * abz) / (abx * abx + aby * aby + abz * abz || 1)));
+  return { d: Math.hypot(p.x - (a.x + abx * t), p.y - (a.y + aby * t), p.z - (a.z + abz * t)), t };
+}
+
+// Does this light's modifier (or reflector) sit between the camera and the subject?
+export function blocksSubject(item, state) {
+  const T = subjectTarget(state.subject), cam = cameraPose(state.camera, T);
+  let c = { x: item.x, y: item.h, z: item.z }, r;
+  if (item.kind === 'light') {
+    const m = modSpec(item), d = lightDir(item, T);
+    r = (m.shape === 'disc' ? m.r : Math.hypot(m.w, m.h) / 2) + 0.06;
+    c = { x: item.x - d.x * m.depth / 2, y: item.h - d.y * m.depth / 2, z: item.z - d.z * m.depth / 2 };
+  } else {
+    const p = PANELS[item.size] || PANELS.disc110;
+    if (p.shape !== 'disc') { c.y = p.h / 2; r = p.h / 2; } else r = p.r + 0.04;
+  }
+  const portrait = state.subject.type === 'portrait';
+  const pts = portrait ? [0.14, 0, -0.3, -0.6] : [0.12, 0, -0.1];
+  for (const dy of pts) {
+    const s = segDist(c, cam, { x: T.x, y: T.y + dy, z: T.z });
+    if (s.t > 0.03 && s.t < 0.97 && s.d < r) return true;
+  }
+  return false;
+}
+
+// Raise anything that hides the subject until the camera can see past it.
+// Returns the ids that were raised and the ids that still block (nowhere left to go).
+export function avoidCamera(state) {
+  const raised = new Set(), stuck = new Set();
+  let changed = false;
+  if (state.camera.autoAvoid === false) return { raised, stuck, changed };
+  for (const item of state.items) {
+    if (item.on === false || !blocksSubject(item, state)) continue;
+    if (item.kind === 'panel' && item.size === 'vflat') { stuck.add(item.id); continue; }
+    while (item.h < 3.0 && blocksSubject(item, state)) { item.h = Math.round((item.h + 0.05) * 100) / 100; changed = true; }
+    if (blocksSubject(item, state)) stuck.add(item.id);
+  }
+  // "raised" = sitting just above the line of sight: any lower and it would block again
+  for (const item of state.items) {
+    if (item.on === false || stuck.has(item.id) || item.h < 0.35) continue;
+    if (blocksSubject({ ...item, h: item.h - 0.1 }, state)) raised.add(item.id);
+  }
+  return { raised, stuck, changed };
 }
