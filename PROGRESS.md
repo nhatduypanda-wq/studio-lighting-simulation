@@ -10,16 +10,8 @@ Dựng lại mẫu: `python3 tools/build_models.py --mh <makehuman> --data <make
 
 Lưu ý khi thử: path tracing rất nặng trên máy giả lập không có GPU; chỉ thử với cửa sổ nhỏ (khoảng 420×560) và dưới 60 mẫu, nếu không máy có thể bị treo.
 
-## Giai đoạn 4 — thiết bị còn thiếu + công cụ học (đang làm, nhánh `phase-4`)
+## Giai đoạn 4 — thiết bị còn thiếu + công cụ học: XONG, đã gộp vào `main`
 
-Đánh dấu [x] khi xong và đã commit:
-- [x] Gel màu (CTO/CTB theo mired, gel màu RGB) cho mọi đèn
-- [x] Đèn mới: ring light, đèn ống; phụ kiện mới: parabolic, Fresnel, barn doors, optical spot + gobo
-- [x] Xoay đèn tự do ±180° (để đánh phông); phông xanh, cyclorama
-- [ ] Tỉ lệ đèn chính:phụ, histogram, false color
-- [ ] Xuất sơ đồ ánh sáng PNG, so sánh A/B
-- [ ] Tab "Học": 9 bài học ngắn kèm bố cục dựng sẵn (src/lessons.js), hai ngôn ngữ
-- [ ] Kiểm tra điện thoại + 2 ngôn ngữ, README, tăng CACHE trong sw.js, gộp vào main
-
-Không làm trong đợt này: tư thế ngồi, scrim, chế độ thử thách chấm điểm.
-
+## Việc tiếp theo (chờ người dùng duyệt)
+- Chưa làm: tư thế ngồi và biểu cảm cho người mẫu, scrim/tấm tản rời, chế độ thử thách chấm điểm (dựng lại ảnh mẫu), gobo trong chế độ chất lượng cao.
+- Cần người dùng xác nhận trên thiết bị thật: tốc độ trên iPhone/iPad, chế độ chất lượng cao có chạy được không.
