@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { materialParams, sampleGeometry, woodFloorTexture, muslinTexture } from './materials.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
-import { ROOM, MODIFIERS, PANELS, PANEL_SURFACES, SKIN_TONES, HAIR_COLORS, CLOTHES_COLORS, modSpec, modelKey, modelMeta } from './data.js';
+import { TENT, ROOM, MODIFIERS, PANELS, PANEL_SURFACES, SKIN_TONES, HAIR_COLORS, CLOTHES_COLORS, modSpec, modelKey, modelMeta } from './data.js';
 
 // Diffuse image-based light comes from a second probe that excludes the lamp faces
 // (lamps light surfaces through shadowed spot lights instead), so every physical
@@ -99,6 +99,39 @@ export function buildBackdrop() {
     mat.roughness = kind === 'vinyl' ? 0.28 : kind === 'muslin' ? 1 : 0.92;
   };
   return { group: g, mat, setKind };
+}
+
+// ---- cucoloris: a board with irregular holes that throws dappled shadows ---------------
+let cookieTex = null;
+function cookieTexture() {
+  if (!cookieTex) {
+    const n = 512, c = document.createElement('canvas'); c.width = c.height = n;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0, 0, n, n);
+    g.globalCompositeOperation = 'destination-out';
+    let s = 17; const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    for (let i = 0; i < 46; i++) { g.beginPath(); g.ellipse(r() * n, r() * n, 20 + r() * 46, 10 + r() * 24, r() * 6.3, 0, 7); g.fill(); }
+    cookieTex = new THREE.CanvasTexture(c);
+  }
+  return cookieTex;
+}
+
+// ---- product tent: four translucent walls around the table top -------------------------
+export function buildTent() {
+  const g = new THREE.Group(), mats = {};
+  const s = TENT.half * 2;
+  const wall = (id, x, y, z, rx, ry) => {
+    const m = new THREE.MeshBasicMaterial({ color: 0x050505, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(s, s), m);
+    mesh.position.set(x, y, z); mesh.rotation.set(rx, ry, 0); mesh.userData.noHQ = true;
+    mats[id] = m; g.add(mesh);
+  };
+  wall('tent:L', -TENT.half, TENT.y, 0, 0, Math.PI / 2); wall('tent:R', TENT.half, TENT.y, 0, 0, Math.PI / 2);
+  wall('tent:T', 0, TENT.y + TENT.half, 0, Math.PI / 2, 0); wall('tent:B', 0, TENT.y, -TENT.half, 0, 0);
+  const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(s, s, s)), new THREE.LineBasicMaterial({ color: 0x777777 }));
+  frame.position.set(0, TENT.y, 0); frame.userData.noHQ = true; g.add(frame);
+  g.visible = false;
+  return { group: g, mats };
 }
 
 // ---- gobos: patterns projected by the optical spot ----------------------------------
@@ -329,6 +362,7 @@ export function buildPanelRig(item) {
   const s = PANEL_SURFACES[item.surface] || PANEL_SURFACES.white;
   // a scrim is translucent and glows where lamps hit it; the engine sets its brightness
   const mat = s.scrim ? new THREE.MeshBasicMaterial({ color: 0x050505, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })
+    : s.cookie ? std({ color: 0x050505, roughness: 1, map: cookieTexture(), alphaTest: 0.5, side: THREE.DoubleSide })
     : std({ color: s.color, roughness: s.rough, metalness: s.metal, side: THREE.DoubleSide });
   const head = new THREE.Group();
   if (p.shape === 'disc') {
@@ -348,6 +382,7 @@ export function buildPanelRig(item) {
   stand.visible = p.shape === 'disc';
   const group = new THREE.Group();
   group.add(head, stand);
+  if (s.cookie) { const dm = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: cookieTexture(), alphaTest: 0.5 }); head.traverse((o) => { if (o.isMesh && o.material === mat) o.customDepthMaterial = dm; }); }
   const faces = [];
   if (s.scrim) head.traverse((o) => { if (o.isMesh && o.material === mat) { o.castShadow = false; o.receiveShadow = false; faces.push(o); } });
   return { group, head, stand, faces, standOffset: -0.03, isPanel: true, panel: p, scrimMat: s.scrim ? mat : null };

@@ -129,6 +129,20 @@ export class Diagram {
       g.fillStyle = '#d9d9d9'; g.beginPath(); g.arc(this.X(0), this.Z(0), 0.07 * s + 2, 0, 7); g.fill();
     }
 
+    // family of angles: where a light must be for a flat shiny surface on the subject to
+    // reflect it straight into the lens (mirror the camera in the surface, look out through it)
+    if (st.subject.foa && st.subject.type !== 'portrait') {
+      const a = (st.subject.rot || 0) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a), hw = 0.16;
+      const dot = (cp.x - T.x) * nx + (cp.z - T.z) * nz;
+      if (dot > 0.05) {
+        const mx = cp.x - 2 * dot * nx, mz = cp.z - 2 * dot * nz; // mirrored camera
+        const e1 = { x: T.x - nz * hw, z: T.z + nx * hw }, e2 = { x: T.x + nz * hw, z: T.z - nx * hw }, K = 12;
+        g.fillStyle = 'rgba(90,220,120,.16)'; g.strokeStyle = 'rgba(90,220,120,.6)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(this.X(e1.x), this.Z(e1.z)); g.lineTo(this.X(e1.x + (e1.x - mx) * K), this.Z(e1.z + (e1.z - mz) * K));
+        g.lineTo(this.X(e2.x + (e2.x - mx) * K), this.Z(e2.z + (e2.z - mz) * K)); g.lineTo(this.X(e2.x), this.Z(e2.z)); g.closePath(); g.fill(); g.stroke();
+      }
+    }
+
     // equipment
     let n = 0;
     for (const it of st.items) {
@@ -153,7 +167,7 @@ export class Diagram {
         ang = Math.atan2(T.x - it.x, T.z - it.z);
         const p = PANELS[it.size] || PANELS.disc110; width = p.shape === 'disc' ? p.r * 2 : p.w;
         color = '#' + (PANEL_SURFACES[it.surface] || PANEL_SURFACES.white).color.toString(16).padStart(6, '0');
-        if (it.surface === 'black') color = '#000';
+        if (it.surface === 'black' || it.surface === 'cookie') color = '#000';
       }
       const wpx = Math.max(14, width * s);
       g.save(); g.translate(px, py); g.rotate(-ang);

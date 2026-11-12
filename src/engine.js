@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightColor, MODELING, lightDir, scrimFor, setRoom, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
-import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree, setAssetCallback, goboTexture } from './models.js';
+import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree, setAssetCallback, goboTexture, buildTent } from './models.js';
 
 // --- shader patches (must run before any material compiles) ---
 function patch(chunk, find, repl) {
@@ -98,7 +98,8 @@ export class Engine {
     this.room = buildRoom();
     this.backdrop = buildBackdrop();
     this.camRig = buildCameraRig();
-    this.scene.add(this.room.group, this.backdrop.group, this.camRig.group);
+    this.tent = buildTent();
+    this.scene.add(this.room.group, this.backdrop.group, this.camRig.group, this.tent.group);
 
     // house lights: only used so the studio overview is readable, never in the photo
     this.workLight = new THREE.HemisphereLight(0xffffff, 0x555555, 0.55);
@@ -255,6 +256,7 @@ export class Engine {
     this.photoCam.clearViewOffset(); this.photoCam.updateMatrixWorld(true);
     this.frameMatrix = new THREE.Matrix4().multiplyMatrices(this.photoCam.projectionMatrix, this.photoCam.matrixWorldInverse);
 
+    this.tent.group.visible = !!state.subject.tent && state.subject.type !== 'portrait';
     // equipment
     this._scrimGlow = new Map();
     const seen = new Set();
@@ -280,6 +282,7 @@ export class Engine {
       this._poseRig(rig, item, state);
     }
     for (const [id, rig] of this.rigs) if (rig.scrimMat) { const g = this._scrimGlow.get(id) || [0, 0, 0]; rig.scrimMat.color.setRGB(0.01 + g[0], 0.01 + g[1], 0.01 + g[2]); }
+    for (const id in this.tent.mats) { const g = this._scrimGlow.get(id) || [0, 0, 0]; this.tent.mats[id].color.setRGB(0.012 + g[0], 0.012 + g[1], 0.012 + g[2]); }
     for (const [id, rig] of this.rigs) if (!seen.has(id)) { this._dropRig(rig); this.rigs.delete(id); }
 
     this.lensRadius = cam.focal / 1000 / (2 * cam.aperture);
@@ -404,13 +407,23 @@ export class Engine {
     c.position.copy(this.camPos);
     c.up.set(0, 1, 0);
     c.lookAt(this.target);
+    // eye close-up: render a 5x crop centred on the eyes to inspect the catchlights
+    let fw = this.W, fh = this.H, ox = 0, oy = 0;
+    const st = this.state;
+    if (st.camera.eyeZoom && st.subject.type === 'portrait') {
+      c.clearViewOffset(); c.updateMatrixWorld(true);
+      const e = v.c.set(this.target.x, this.target.y + 0.035, this.target.z + 0.08).project(c), Z = 5;
+      fw = this.W * Z; fh = this.H * Z;
+      ox = (e.x * 0.5 + 0.5) * fw - this.W / 2; oy = (-e.y * 0.5 + 0.5) * fh - this.H / 2;
+      c.setViewOffset(fw, fh, ox, oy, this.W, this.H);
+    }
     if (n > 0) {
-      c.setViewOffset(this.W, this.H, halton(n, 2) - 0.5, halton(n, 3) - 0.5, this.W, this.H);
+      c.setViewOffset(fw, fh, ox + halton(n, 2) - 0.5, oy + halton(n, 3) - 0.5, this.W, this.H);
       const rr = Math.sqrt(halton(n, 5)) * this.lensRadius, th = halton(n, 7) * Math.PI * 2;
       const right = v.a.set(1, 0, 0).applyQuaternion(c.quaternion), up = v.b.set(0, 1, 0).applyQuaternion(c.quaternion);
       c.position.addScaledVector(right, rr * Math.cos(th)).addScaledVector(up, rr * Math.sin(th));
       c.lookAt(this.target);
-    } else c.clearViewOffset();
+    } else if (fw === this.W) c.clearViewOffset();
     return c;
   }
 
@@ -422,9 +435,12 @@ export class Engine {
     this.camRig.group.visible = true;
     r.shadowMap.autoUpdate = false; r.shadowMap.needsUpdate = true;
     this.cubeCamSpec.update(r, this.scene);
+    const tentOn = this.tent.group.visible;
+    this.tent.group.visible = false;
     for (const rig of this.rigs.values()) for (const f of rig.faces) f.visible = false;
     this.cubeCamDiff.update(r, this.scene);
     for (const rig of this.rigs.values()) for (const f of rig.faces) f.visible = true;
+    this.tent.group.visible = tentOn;
     r.shadowMap.autoUpdate = true;
     this.subject.group.visible = true;
     this.pmSpec = this.pmrem.fromCubemap(this.cubeSpec.texture, this.pmSpec);

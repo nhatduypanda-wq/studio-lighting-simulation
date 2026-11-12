@@ -11,7 +11,7 @@ import { LESSONS, applyLesson } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '6.2';
+const APP_VERSION = '6.3';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -294,6 +294,7 @@ function paneCamera() {
   f.append(slider(t('camAngle'), c.angle, -90, 90, 1, fmtDeg, chg((v) => { c.angle = v; }, { env: false })));
   f.append(select(t('aspect'), c.aspect, Object.keys(ASPECTS).map((k) => [k, k]), (v) => { c.aspect = v; layout(); commit({ env: false }); }));
   f.append(check(t('autoAvoid'), c.autoAvoid !== false, chg((v) => { c.autoAvoid = v; })));
+  f.append(check(t('eyeZoom'), c.eyeZoom, chg((v) => { c.eyeZoom = v; }, { env: false })));
   f.append(check(t('histogram'), c.hist !== false, (v) => { c.hist = v; $('hist').hidden = !v; commit({ env: false }); }));
   f.append(check(t('falseColor'), c.falseColor, chg((v) => { c.falseColor = v; }, { env: false, rebuild: true })));
   if (c.falseColor) f.append(el('div', { class: 'note' }, t('falseLegend')));
@@ -340,6 +341,9 @@ function paneSubject() {
       f.append(select(t('material'), s.mat, MATERIAL_IDS.map((k) => [k, t('mat.' + k)]), chg((v) => { s.mat = v; })));
       f.append(select(t('shape'), s.shape, SHAPE_IDS.map((k) => [k, t('shape.' + k)]), chg((v) => { s.shape = v; })));
     }
+    f.append(check(t('tent'), s.tent, chg((v) => { s.tent = v; })));
+    f.append(check(t('foa'), s.foa, (v) => { s.foa = v; commit({ env: false, rebuild: true }); }));
+    if (s.foa) f.append(el('div', { class: 'note' }, t('foaNote')));
     f.append(slider(t('rotate'), s.rot, -180, 180, 1, fmtDeg, chg((v) => { s.rot = v; })));
     f.append(select(t('table'), s.table, ['white', 'black', 'wood'].map((k) => [k, t('table.' + k)]), chg((v) => { s.table = v; })));
   }

@@ -71,6 +71,7 @@ export const PANEL_SURFACES = {
   gold: { color: 0xffd9a0, rough: 0.6, metal: 0 },
   black: { color: 0x050505, rough: 1, metal: 0 },
   scrim: { color: 0xf4f4f4, rough: 1, metal: 0, scrim: true },
+  cookie: { color: 0x050505, rough: 1, metal: 0, cookie: true },
 };
 
 export const SUBJECTS = ['portrait', 'material', 'spheres', 'bottle', 'vase', 'shaker', 'watch', 'ring', 'cosmetics', 'fruit', 'chart'];
@@ -394,22 +395,36 @@ export function avoidCamera(state) {
 // patch (centre, radius, plane normal) and k, the factor from the lamp's on-axis intensity
 // to the patch's intensity towards the subject (half the light is transmitted, re-emitted
 // diffusely).
+export const TENT = { half: 0.4, y: 1.3 }; // product tent: a translucent cube around the table top
+export function tentPlanes(state) {
+  if (!state.subject.tent || state.subject.type === 'portrait') return [];
+  const h = TENT.half, y = TENT.y;
+  return [
+    { id: 'tent:L', C: { x: -h, y, z: 0 }, n: { x: 1, y: 0, z: 0 } }, { id: 'tent:R', C: { x: h, y, z: 0 }, n: { x: -1, y: 0, z: 0 } },
+    { id: 'tent:T', C: { x: 0, y: y + h, z: 0 }, n: { x: 0, y: -1, z: 0 } }, { id: 'tent:B', C: { x: 0, y, z: -h }, n: { x: 0, y: 0, z: 1 } },
+  ].map((p) => ({ ...p, lim: h * 1.2 }));
+}
 export function scrimFor(item, state) {
   const T = subjectTarget(state.subject);
+  const planes = tentPlanes(state);
   for (const s of state.items) {
     if (s.kind !== 'panel' || s.surface !== 'scrim' || s.on === false) continue;
     const p = PANELS[s.size] || PANELS.disc110, disc = p.shape === 'disc';
-    const C = { x: s.x, y: disc ? s.h : p.h / 2, z: s.z }, lim = disc ? p.r : Math.min(p.w, p.h) / 2;
-    let nx = T.x - C.x, ny = disc ? T.y - C.y : 0, nz = T.z - C.z; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
-    const dx = T.x - item.x, dy = T.y - item.h, dz = T.z - item.z, den = dx * nx + dy * ny + dz * nz;
-    if (Math.abs(den) < 1e-4) continue;
-    const t = ((C.x - item.x) * nx + (C.y - item.h) * ny + (C.z - item.z) * nz) / den;
+    const C = { x: s.x, y: disc ? s.h : p.h / 2, z: s.z };
+    let nx = T.x - C.x, ny = disc ? T.y - C.y : 0, nz = T.z - C.z; const nl = Math.hypot(nx, ny, nz) || 1;
+    planes.push({ id: s.id, C, n: { x: nx / nl, y: ny / nl, z: nz / nl }, lim: disc ? p.r : Math.min(p.w, p.h) / 2 });
+  }
+  for (const pl of planes) {
+    const { C, n, lim } = pl;
+    const dx = T.x - item.x, dy = T.y - item.h, dz = T.z - item.z, den = dx * n.x + dy * n.y + dz * n.z;
+    if (den < 1e-4) continue; // the lamp must be on the far side, shining through towards the subject
+    const t = ((C.x - item.x) * n.x + (C.y - item.h) * n.y + (C.z - item.z) * n.z) / den;
     if (t <= 0.02 || t >= 0.98) continue;
     const X = { x: item.x + dx * t, y: item.h + dy * t, z: item.z + dz * t };
     if (Math.hypot(X.x - C.x, X.y - C.y, X.z - C.z) > lim) continue;
     const d1 = Math.hypot(dx, dy, dz) * t;
     const r = Math.max(0.05, Math.min(lim, d1 * Math.tan(modSpec(item).half * Math.PI / 180)));
-    return { center: X, r, k: 0.5 * r * r / (d1 * d1), normal: { x: nx, y: ny, z: nz }, panel: s.id, limit: lim };
+    return { center: X, r, k: 0.5 * r * r / (d1 * d1), normal: n, panel: pl.id, limit: lim };
   }
   return null;
 }

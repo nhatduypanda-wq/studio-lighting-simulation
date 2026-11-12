@@ -36,8 +36,8 @@ Thứ tự người dùng duyệt: 1 → 2 → 3 (chân dung trước) → 4 (l�
 - [x] 4a. Sàn: bê tông / gỗ / bóng; phông vải muslin, vinyl
 - [x] 4b. Kích thước phòng chỉnh được
 - [x] 4c. Boom/C-stand (kiểu chân: thường / boom / treo trần / tự động)
-- [ ] 4d. Lều chụp sản phẩm; cucoloris
-- [ ] 4e. Phóng to xem catchlight; minh họa family of angles
+- [x] 4d. Lều chụp sản phẩm; cucoloris
+- [x] 4e. Phóng to xem catchlight; minh họa family of angles
 5. Người mẫu
 - [ ] 5a. Tư thế tay (build_models.py: thêm vài tư thế tay dạng thuộc tính như _SEATPOS)
 
