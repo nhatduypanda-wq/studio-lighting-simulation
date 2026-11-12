@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Studio Light</title>
+<meta name="description" content="Studio lighting simulator for learning portrait and product lighting.">
+<meta name="theme-color" content="#161718">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Studio Light">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="styles.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+<header class="bar">
+  <div class="brand"><span class="logo" aria-hidden="true"></span><span id="brandName">Studio Light</span></div>
+  <div class="seg" id="viewSeg" role="tablist">
+    <button type="button" data-view="camera"></button>
+    <button type="button" data-view="overview"></button>
+  </div>
+  <label class="preset"><span class="sr" id="presetLabel"></span><select id="preset"></select></label>
+  <span class="spacer"></span>
+  <button type="button" class="ghost" id="langBtn" aria-label="Language"></button>
+  <button type="button" class="ghost" id="resetBtn"></button>
+  <button type="button" class="ghost" id="aboutBtn"></button>
+</header>
+
+<main class="app">
+  <section class="stage" id="stage">
+    <canvas id="gl"></canvas>
+    <div class="loading" id="loading"></div>
+    <div class="hud" id="hud"></div>
+    <div class="warn" id="warn" hidden></div>
+    <button type="button" class="save" id="saveBtn"></button>
+    <div class="progress"><i id="progress"></i></div>
+  </section>
+  <aside class="side">
+    <div class="diagramWrap" id="diagramWrap"><canvas id="diagram"></canvas></div>
+    <nav class="tabs" id="tabs"></nav>
+    <div class="pane" id="pane"></div>
+  </aside>
+</main>
+
+<dialog id="about">
+  <h2 id="aboutTitle"></h2>
+  <p id="aboutBody"></p>
+  <form method="dialog"><button id="aboutClose"></button></form>
+</dialog>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

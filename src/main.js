@@ -1,0 +1,417 @@
+import { t, getLang, setLang } from './i18n.js';
+import {
+  LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
+  APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
+  defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA,
+} from './data.js';
+import { Diagram, LIMITS } from './diagram.js';
+
+const $ = (id) => document.getElementById(id);
+const STORE = 'sl.state.v1';
+const MAX_LIGHTS = 5;
+const mobile = matchMedia('(pointer: coarse)').matches;
+const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
+
+let state = load();
+let tab = 'lights';
+let engine = null;
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE));
+    if (s && s.v === 1 && Array.isArray(s.items)) {
+      const d = defaultState();
+      return { ...d, ...s, subject: { ...d.subject, ...s.subject }, set: { ...d.set, ...s.set }, camera: { ...d.camera, ...s.camera }, view: 'camera' };
+    }
+  } catch { /* fall through */ }
+  const d = defaultState(); d.preset = 'rembrandt'; d.selected = d.items[0]?.id ?? null; return d;
+}
+let saveTimer = 0;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { /* ignore */ } }, 400);
+}
+
+// ---- formatting ---------------------------------------------------------------
+const num = (v, d = 1) => v.toLocaleString(getLang() === 'vi' ? 'vi-VN' : 'en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtM = (v) => `${num(v, 2)} ${t('m')}`;
+const fmtDeg = (v) => `${Math.round(v)}°`;
+const fmtF = (n) => (n >= 0.7 ? `f/${n >= 10 ? Math.round(n) : num(n, 1)}` : '< f/0.7');
+const fmtEv = (ev) => (ev >= 0 ? '+' : '−') + num(Math.abs(ev), 1);
+function fmtPower(item) {
+  const lt = LIGHT_TYPES[item.type];
+  if (!lt.flash) return `${Math.round(100 * Math.pow(2, item.stops))}% · ${Math.round(lt.watts * Math.pow(2, item.stops))} W`;
+  const n = -item.stops, whole = Math.ceil(n - 0.01), frac = whole - n;
+  const base = whole === 0 ? '1/1' : `1/${2 ** whole}`;
+  return `${base}${frac > 0.05 ? ' +' + num(frac, 1) : ''} · ${Math.round(lt.ws * Math.pow(2, item.stops))} Ws`;
+}
+
+// ---- state changes ------------------------------------------------------------
+let pending = null;
+function commit({ env = true, rebuild = false } = {}) {
+  if (rebuild) renderPane();
+  pending = { env: env || (pending?.env ?? false) };
+  save();
+}
+function flush() {
+  requestAnimationFrame(flush);
+  if (!pending) return;
+  const p = pending; pending = null;
+  engine?.sync(state, p.env);
+  diagram.draw();
+  updateReadouts();
+}
+const touched = () => { state.preset = 'custom'; $('preset').value = 'custom'; };
+const selected = () => state.items.find((i) => i.id === state.selected) || null;
+const lightCount = () => state.items.filter((i) => i.kind === 'light').length;
+
+function polar(item) {
+  const T = subjectTarget(state.subject);
+  return { d: Math.hypot(item.x - T.x, item.z - T.z), a: Math.atan2(item.x - T.x, item.z - T.z) * 180 / Math.PI };
+}
+function setPolar(item, d, a) {
+  const T = subjectTarget(state.subject), r = a * Math.PI / 180;
+  item.x = Math.max(-LIMITS.x, Math.min(LIMITS.x, T.x + Math.sin(r) * d));
+  item.z = Math.max(LIMITS.zMin, Math.min(LIMITS.zMax, T.z + Math.cos(r) * d));
+}
+
+function applyPreset(id) {
+  const p = PRESETS[id]; if (!p) return;
+  const dy = subjectTarget(state.subject).y - 1.57;
+  state.items = p.items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
+  if (p.camera) Object.assign(state.camera, p.camera);
+  else Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600 });
+  state.preset = id;
+  state.selected = state.items[0]?.id ?? null;
+  commit({ rebuild: true });
+}
+
+// When the subject height changes, keep the lighting geometry relative to it.
+function shiftHeights(before) {
+  const dy = subjectTarget(state.subject).y - before;
+  if (!dy) return;
+  for (const i of state.items) i.h = Math.max(0.2, Math.min(3.0, i.h + dy));
+  state.camera.height = Math.max(0.3, Math.min(2.6, state.camera.height + dy));
+}
+
+// ---- small DOM helpers ---------------------------------------------------------
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in props) {
+    if (k === 'class') e.className = props[k];
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), props[k]);
+    else if (props[k] !== undefined && props[k] !== false) e.setAttribute(k, props[k] === true ? '' : props[k]);
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+function slider(label, value, min, max, step, fmt, onInput) {
+  const out = el('output', {}, fmt(value));
+  const inp = el('input', { type: 'range', min, max, step, 'aria-label': label });
+  inp.value = value;
+  inp.addEventListener('input', () => { const v = parseFloat(inp.value); out.textContent = fmt(v); onInput(v); });
+  return el('div', { class: 'row' }, el('div', { class: 'lab' }, el('span', {}, label), out), inp);
+}
+function stepSlider(label, list, value, fmt, onInput) {
+  let idx = list.indexOf(value); if (idx < 0) idx = 0;
+  return slider(label, idx, 0, list.length - 1, 1, (i) => fmt(list[i]), (i) => onInput(list[i]));
+}
+function select(label, value, options, onChange) {
+  const s = el('select', { 'aria-label': label });
+  for (const [v, text] of options) { const o = el('option', { value: v }, text); if (v === value) o.selected = true; s.append(o); }
+  s.addEventListener('change', () => onChange(s.value));
+  return el('div', { class: 'row' }, el('div', { class: 'lab' }, el('span', {}, label)), s);
+}
+function check(label, value, onChange) {
+  const c = el('input', { type: 'checkbox' }); c.checked = !!value;
+  c.addEventListener('change', () => onChange(c.checked));
+  return el('label', { class: 'check' }, el('span', {}, label), c);
+}
+const button = (label, cls, onClick) => el('button', { type: 'button', class: 'btn ' + (cls || ''), onclick: onClick }, label);
+
+// ---- panes ----------------------------------------------------------------------
+function itemTitle(item) {
+  if (item.kind === 'panel') return `${t('panel')} · ${t('surface.' + item.surface).split(' (')[0]}`;
+  return t('mod.' + modSpec(item).id);
+}
+function itemSub(item) {
+  if (item.kind === 'panel') return t('size.' + item.size);
+  return t('type.' + item.type);
+}
+
+function paneLights() {
+  const f = document.createDocumentFragment();
+  f.append(el('div', { class: 'note', id: 'expoNote' }));
+  if (!state.items.length) f.append(el('p', { class: 'hint' }, t('noItems')));
+  const ul = el('ul', { class: 'items' });
+  state.items.forEach((item, i) => {
+    const li = el('li', { class: (item.id === state.selected ? 'sel ' : '') + (item.on === false ? 'off' : ''), onclick: () => { state.selected = item.id; commit({ env: false, rebuild: true }); } },
+      el('span', { class: 'num' }, String(i + 1)),
+      el('span', { class: 'nm' }, el('div', {}, itemTitle(item)), el('small', { 'data-meter': item.id }, itemSub(item))));
+    ul.append(li);
+  });
+  f.append(ul);
+  const add = el('div', { class: 'btns' });
+  if (lightCount() < MAX_LIGHTS) add.append(button('+ ' + t('addLight'), 'primary', () => {
+    const T = subjectTarget(state.subject);
+    const side = lightCount() % 2 ? 1 : -1;
+    const it = makeLight({ x: side * 1.1, z: 1.1, h: T.y + 0.45, stops: -3 });
+    state.items.push(it); state.selected = it.id; touched(); commit({ rebuild: true });
+  }));
+  add.append(button('+ ' + t('addPanel'), '', () => {
+    const T = subjectTarget(state.subject);
+    const it = makePanel({ x: 0.85, z: 0.3, h: T.y - 0.2 });
+    state.items.push(it); state.selected = it.id; touched(); commit({ rebuild: true });
+  }));
+  f.append(add);
+
+  const item = selected();
+  if (!item) { f.append(el('p', { class: 'hint' }, t('selectHint'))); return f; }
+  const ed = el('div', { class: 'editor' });
+  const idx = state.items.indexOf(item) + 1;
+  ed.append(el('h3', {}, `${idx}. ${itemTitle(item)}`));
+  const chg = (fn, opts) => (v) => { fn(v); touched(); commit(opts); };
+
+  if (item.kind === 'light') {
+    const lt = LIGHT_TYPES[item.type];
+    ed.append(check(t('on'), item.on, chg((v) => { item.on = v; }, { rebuild: true })));
+    ed.append(select(t('type'), item.type, Object.keys(LIGHT_TYPES).map((k) => [k, t('type.' + k)]), chg((v) => {
+      item.type = v; const n = LIGHT_TYPES[v];
+      if (!n.mods.includes(item.mod)) item.mod = n.mods[0];
+      item.stops = Math.max(n.flash ? -8 : -5, item.stops);
+      if (v === 'speedlight' && item.mod === 'standard') item.mod = 'speedhead';
+    }, { rebuild: true })));
+    if (lt.mods.length > 1) ed.append(select(t('modifier'), modSpec(item).id, lt.mods.map((k) => [k, t('mod.' + k)]), chg((v) => { item.mod = v; if (!MODIFIERS[v].grid) item.grid = false; }, { rebuild: true })));
+    if (modSpec(item).hasGrid) ed.append(check(t('grid'), item.grid, chg((v) => { item.grid = v; })));
+    ed.append(slider(t('power'), item.stops, lt.flash ? -8 : -5, 0, 1 / 3, (v) => fmtPower({ ...item, stops: v }), chg((v) => { item.stops = Math.round(v * 3) / 3; })));
+    if (!lt.flash) ed.append(slider(t('kelvin'), item.kelvin, 2700, 6500, 100, (v) => `${v} K`, chg((v) => { item.kelvin = v; })));
+  } else {
+    ed.append(check(t('on'), item.on !== false, chg((v) => { item.on = v; }, { rebuild: true })));
+    ed.append(select(t('surface'), item.surface, Object.keys(PANEL_SURFACES).map((k) => [k, t('surface.' + k)]), chg((v) => { item.surface = v; }, { rebuild: true })));
+    ed.append(select(t('size'), item.size, Object.keys(PANELS).map((k) => [k, t('size.' + k)]), chg((v) => { item.size = v; }, { rebuild: true })));
+  }
+  const p = polar(item);
+  ed.append(slider(t('distance'), Math.min(4.5, p.d), 0.3, 4.5, 0.05, fmtM, chg((v) => { setPolar(item, v, polar(item).a); })));
+  ed.append(slider(t('angle'), p.a, -180, 180, 1, fmtDeg, chg((v) => { setPolar(item, Math.max(0.3, polar(item).d), v); })));
+  if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(slider(t('height'), item.h, 0.2, 3.0, 0.05, fmtM, chg((v) => { item.h = v; })));
+  if (item.kind === 'light') ed.append(slider(t('feather'), item.feather || 0, -45, 45, 1, fmtDeg, chg((v) => { item.feather = v; })));
+  ed.append(el('div', { class: 'btns' },
+    button(t('duplicate'), '', () => {
+      if (item.kind === 'light' && lightCount() >= MAX_LIGHTS) return;
+      const c = { ...item, id: nextId(), x: Math.max(-LIMITS.x, Math.min(LIMITS.x, -item.x || 0.5)) };
+      state.items.push(c); state.selected = c.id; touched(); commit({ rebuild: true });
+    }),
+    button(t('remove'), 'danger', () => {
+      state.items = state.items.filter((i) => i !== item); state.selected = state.items[0]?.id ?? null; touched(); commit({ rebuild: true });
+    })));
+  f.append(ed);
+  return f;
+}
+
+function paneCamera() {
+  const f = document.createDocumentFragment();
+  const c = state.camera;
+  const chg = (fn, opts = { env: true }) => (v) => { fn(v); commit(opts); };
+  f.append(el('div', { class: 'note', id: 'expoNote' }));
+  f.append(el('div', { class: 'note bad', id: 'syncNote', hidden: true }, t('syncWarn')));
+  f.append(stepSlider(t('aperture'), APERTURES, c.aperture, (v) => `f/${v}`, chg((v) => { c.aperture = v; })));
+  f.append(stepSlider(t('shutter'), SHUTTERS, c.shutter, (v) => `1/${v} s`, chg((v) => { c.shutter = v; })));
+  f.append(stepSlider(t('iso'), ISOS, c.iso, (v) => `ISO ${v}`, chg((v) => { c.iso = v; })));
+  f.append(slider(t('wb'), c.wb, 2500, 10000, 100, (v) => `${v} K`, chg((v) => { c.wb = v; })));
+  f.append(stepSlider(t('focal'), FOCALS, c.focal, (v) => `${v} mm`, chg((v) => { c.focal = v; }, { env: false })));
+  f.append(slider(t('camDist'), c.dist, 0.5, 4.5, 0.05, fmtM, chg((v) => { c.dist = v; }, { env: false })));
+  f.append(slider(t('camHeight'), c.height, 0.3, 2.6, 0.05, fmtM, chg((v) => { c.height = v; }, { env: false })));
+  f.append(slider(t('camAngle'), c.angle, -90, 90, 1, fmtDeg, chg((v) => { c.angle = v; }, { env: false })));
+  f.append(select(t('aspect'), c.aspect, Object.keys(ASPECTS).map((k) => [k, k]), (v) => { c.aspect = v; layout(); commit({ env: false }); }));
+  f.append(check(t('clip'), c.clip, chg((v) => { c.clip = v; }, { env: false })));
+  return f;
+}
+
+function paneSubject() {
+  const f = document.createDocumentFragment();
+  const s = state.subject;
+  const chg = (fn, opts) => (v) => { fn(v); commit(opts); };
+  f.append(select(t('subject'), s.type, SUBJECTS.map((k) => [k, t('subject.' + k)]), (v) => {
+    const before = subjectTarget(s).y, wasPortrait = s.type === 'portrait';
+    s.type = v; shiftHeights(before);
+    Object.assign(state.camera, v === 'portrait' ? (wasPortrait ? {} : { dist: 2.1, focal: 85, aspect: '4:5' }) : PRODUCT_CAMERA[v]);
+    state.camera.height = subjectTarget(s).y + (v === 'portrait' ? 0.01 : 0.14);
+    layout(); commit({ rebuild: true });
+  }));
+  if (s.type === 'portrait') {
+    f.append(select(t('skin'), s.skin, Object.keys(SKIN_TONES).map((k) => [k, t('skin.' + k)]), chg((v) => { s.skin = v; })));
+    f.append(select(t('pose'), s.pose, [['standing', t('pose.standing')], ['seated', t('pose.seated')]], (v) => { const b = subjectTarget(s).y; s.pose = v; shiftHeights(b); commit({ rebuild: true }); }));
+    f.append(slider(t('headYaw'), s.yaw, -70, 70, 1, fmtDeg, chg((v) => { s.yaw = v; })));
+    f.append(slider(t('headPitch'), s.pitch, -25, 25, 1, fmtDeg, chg((v) => { s.pitch = v; })));
+  } else {
+    f.append(slider(t('rotate'), s.rot, -180, 180, 1, fmtDeg, chg((v) => { s.rot = v; })));
+    f.append(select(t('table'), s.table, ['white', 'black', 'wood'].map((k) => [k, t('table.' + k)]), chg((v) => { s.table = v; })));
+  }
+  return f;
+}
+
+function paneSet() {
+  const f = document.createDocumentFragment();
+  const s = state.set;
+  f.append(el('div', { class: 'row' }, el('div', { class: 'lab' }, el('span', {}, t('backdrop')))));
+  const sw = el('div', { class: 'swatches' });
+  for (const k in BACKDROPS) {
+    sw.append(el('button', { type: 'button', title: t('bd.' + k), 'aria-label': t('bd.' + k), class: s.backdrop === k ? 'on' : '', style: `background:${BACKDROPS[k]}`, onclick: () => { s.backdrop = k; s.backdropColor = BACKDROPS[k]; commit({ rebuild: true }); } }));
+  }
+  const custom = el('input', { type: 'color', title: t('customColor'), 'aria-label': t('customColor') });
+  custom.value = s.backdropColor;
+  custom.addEventListener('input', () => { s.backdrop = 'custom'; s.backdropColor = custom.value; commit(); });
+  sw.append(custom);
+  f.append(sw);
+  f.append(slider(t('backDist'), s.backDist, 0.4, 3.6, 0.05, fmtM, (v) => { s.backDist = v; commit(); }));
+  f.append(select(t('walls'), s.walls, Object.keys(WALLS).map((k) => [k, t('walls.' + k)]), (v) => { s.walls = v; commit(); }));
+  f.append(el('div', { class: 'btns' }, button(t('reset'), 'danger', resetAll), button(t('about'), '', () => $('about').showModal())));
+  return f;
+}
+
+const PANES = { lights: paneLights, camera: paneCamera, subject: paneSubject, set: paneSet };
+const TABS = ['diagram', 'lights', 'camera', 'subject', 'set'];
+
+function renderPane() {
+  const eff = tab === 'diagram' ? 'lights' : tab;
+  const pane = $('pane');
+  const keep = pane.dataset.tab === eff ? pane.scrollTop : 0;
+  pane.replaceChildren(PANES[eff]());
+  pane.dataset.tab = eff;
+  pane.scrollTop = keep;
+  updateReadouts();
+}
+
+function renderChrome() {
+  document.title = `${t('appName')} — ${t('tagline')}`;
+  for (const b of $('viewSeg').children) { b.textContent = t('view.' + b.dataset.view); b.classList.toggle('on', b.dataset.view === state.view); }
+  $('presetLabel').textContent = t('presets');
+  const ps = $('preset'); ps.setAttribute('aria-label', t('presets')); ps.replaceChildren();
+  for (const k of [...Object.keys(PRESETS), 'custom']) ps.append(el('option', { value: k }, t('preset.' + k)));
+  ps.value = state.preset || 'custom';
+  $('langBtn').textContent = getLang() === 'vi' ? 'EN' : 'VI';
+  $('resetBtn').textContent = t('reset');
+  $('aboutBtn').textContent = t('about');
+  $('saveBtn').textContent = t('savePhoto');
+  $('aboutTitle').textContent = `${t('appName')} — ${t('tagline')}`;
+  $('aboutBody').textContent = t('aboutBody');
+  $('aboutClose').textContent = t('close');
+  const tabs = $('tabs'); tabs.replaceChildren();
+  for (const k of TABS) tabs.append(el('button', { type: 'button', 'data-tab': k, class: k === activeTab() ? 'on' : '', onclick: () => setTab(k) }, t('tab.' + k)));
+}
+const activeTab = () => (wideMq.matches && tab === 'diagram' ? 'lights' : tab);
+function setTab(k) {
+  tab = k;
+  document.body.classList.toggle('tab-diagram', k === 'diagram');
+  for (const b of $('tabs').children) b.classList.toggle('on', b.dataset.tab === activeTab());
+  renderPane();
+  diagram.draw();
+}
+
+// ---- readouts ---------------------------------------------------------------------
+function updateReadouts() {
+  const T = subjectTarget(state.subject), cam = state.camera;
+  let H = 0, anyFlash = false;
+  for (const item of state.items) {
+    if (item.kind !== 'light') continue;
+    const m = meterLight(item, T, cam);
+    const node = document.querySelector(`[data-meter="${item.id}"]`);
+    let text = t('meterOff');
+    if (m) {
+      const lt = LIGHT_TYPES[item.type];
+      H += lt.flash ? m.H : m.H; // already per-exposure
+      if (lt.flash) anyFlash = true;
+      text = m.N < 0.5 ? t('meterNone') : `${fmtF(m.N)} (${fmtEv(m.ev)} EV) · ${fmtM(m.d)}`;
+    }
+    if (node) node.textContent = `${itemSub(item)} · ${text}`;
+  }
+  const N = Math.sqrt(H * cam.iso / 250);
+  const ev = N > 0 ? 2 * Math.log2(N / cam.aperture) : -99;
+  const line = N < 0.5 ? t('meterNone') : t('expoTotal', { f: fmtF(N), ev: fmtEv(ev), n: cam.aperture });
+  const note = $('expoNote'); if (note) note.textContent = `${t('meter')}: ${line}`;
+  const sync = anyFlash && cam.shutter > SYNC_SPEED;
+  const sn = $('syncNote'); if (sn) sn.hidden = !sync;
+  $('warn').hidden = !sync; if (sync) $('warn').textContent = t('syncWarn');
+  $('hud').textContent = `${cam.focal} mm · f/${cam.aperture} · 1/${cam.shutter} s · ISO ${cam.iso} · ${cam.wb} K` + (N >= 0.5 ? `  |  ${fmtEv(ev)} EV` : '');
+  $('hud').hidden = state.view !== 'camera';
+  $('saveBtn').hidden = state.view !== 'camera';
+}
+
+// ---- layout ---------------------------------------------------------------------------
+function layout() {
+  const stage = $('stage'), cv = $('gl');
+  const W = stage.clientWidth, H = stage.clientHeight;
+  if (!W || !H) return;
+  let w = W, h = H;
+  if (state.view === 'camera') {
+    const a = ASPECTS[state.camera.aspect] || 1;
+    if (W / H > a) { h = H; w = H * a; } else { w = W; h = W / a; }
+  }
+  cv.style.width = Math.round(w) + 'px'; cv.style.height = Math.round(h) + 'px';
+  engine?.setSize(Math.round(w), Math.round(h));
+}
+
+// ---- wiring ----------------------------------------------------------------------------
+const diagram = new Diagram($('diagram'), {
+  getState: () => state,
+  labels: () => ({ cam: t('cam'), m: t('m') }),
+  onSelect: (id) => { if (state.selected !== id) { state.selected = id; if (activeTab() === 'lights') renderPane(); commit({ env: false }); } },
+  onMove: (id, x, z) => { const it = state.items.find((i) => i.id === id); if (!it) return; it.x = x; it.z = z; touched(); commit(); syncPolarSliders(); },
+  onMoveCamera: (x, z) => {
+    const T = subjectTarget(state.subject);
+    state.camera.dist = Math.max(0.5, Math.min(4.5, Math.hypot(x - T.x, z - T.z)));
+    state.camera.angle = Math.max(-90, Math.min(90, Math.atan2(x - T.x, z - T.z) * 180 / Math.PI));
+    commit({ env: false });
+    if (activeTab() === 'camera') renderPane();
+  },
+});
+let polarTimer = 0;
+function syncPolarSliders() { // refresh the editor after a drag settles
+  clearTimeout(polarTimer);
+  polarTimer = setTimeout(() => { if (activeTab() === 'lights') renderPane(); }, 250);
+}
+
+$('viewSeg').addEventListener('click', (e) => {
+  const v = e.target.closest('button')?.dataset.view; if (!v) return;
+  state.view = v; renderChrome(); layout(); commit({ env: false });
+});
+$('preset').addEventListener('change', (e) => { if (e.target.value !== 'custom') applyPreset(e.target.value); });
+$('langBtn').addEventListener('click', () => { setLang(getLang() === 'vi' ? 'en' : 'vi'); renderChrome(); renderPane(); diagram.draw(); });
+function resetAll() {
+  if (!confirm(t('resetConfirm'))) return;
+  state = defaultState(); state.preset = 'rembrandt'; state.selected = state.items[0].id;
+  renderChrome(); layout(); commit({ rebuild: true });
+}
+$('resetBtn').addEventListener('click', resetAll);
+$('aboutBtn').addEventListener('click', () => $('about').showModal());
+$('saveBtn').addEventListener('click', async () => {
+  const blob = await engine?.snapshot(); if (!blob) return;
+  const a = el('a', { href: URL.createObjectURL(blob), download: `studio-light-${Date.now()}.jpg` });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+});
+new ResizeObserver(layout).observe($('stage'));
+wideMq.addEventListener('change', () => { renderChrome(); renderPane(); diagram.draw(); });
+
+setLang(getLang());
+renderChrome();
+setTab(wideMq.matches ? 'lights' : 'diagram');
+$('loading').textContent = t('loading');
+requestAnimationFrame(flush);
+
+import('./engine.js').then(({ Engine }) => {
+  engine = new Engine($('gl'), { mobile });
+  engine.onProgress = (p) => { $('progress').style.width = p >= 1 ? '0' : Math.round(p * 100) + '%'; };
+  layout();
+  engine.sync(state, true);
+  engine.start();
+  $('loading').hidden = true;
+  window.__studio = { engine, getState: () => state };
+}).catch((err) => {
+  console.error(err);
+  $('loading').textContent = t('noWebgl');
+});
+
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
+}

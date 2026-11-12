@@ -1,0 +1,16 @@
+{
+  "name": "Studio Light",
+  "short_name": "Studio Light",
+  "description": "Studio lighting simulator for learning portrait and product lighting.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#161718",
+  "theme_color": "#161718",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
