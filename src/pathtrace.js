@@ -31,8 +31,10 @@ function bakeTurn(mesh) {
   const pos = src.attributes.position.clone(), nrm = src.attributes.normal.clone();
   const t = U.uTurn.value, pivot = U.uPivot.value;
   const q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3();
+  const smile = mesh.material.defines && 'USE_SMILE' in mesh.material.defines ? src.attributes._smile : null, sm = U.uSmile ? U.uSmile.value : 0;
   for (let i = 0; i < pos.count; i++) {
     const w = turn.getX(i);
+    if (smile && sm > 0) pos.setXYZ(i, pos.getX(i) + smile.getX(i) * sm, pos.getY(i) + smile.getY(i) * sm, pos.getZ(i) + smile.getZ(i) * sm);
     if (w === 0) continue;
     q.setFromEuler(e.set(t.y * w, t.x * w, t.z * w, 'YXZ'));
     v.fromBufferAttribute(pos, i).sub(pivot).applyQuaternion(q).add(pivot); pos.setXYZ(i, v.x, v.y, v.z);

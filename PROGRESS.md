@@ -12,13 +12,10 @@ Lưu ý khi thử: path tracing rất nặng trên máy giả lập không có G
 
 ## Giai đoạn 4 — thiết bị còn thiếu + công cụ học: XONG, đã gộp vào `main`
 
-## Giai đoạn 5 — các việc còn lại (đang làm, nhánh `phase-5`)
+## Giai đoạn 5 — scrim, gobo chất lượng cao, thử thách, tư thế ngồi + nụ cười: XONG, đã gộp vào `main`
 
-- [x] Scrim: bề mặt 'scrim' cho tấm hắt sáng; đèn chiếu xuyên qua thì nguồn sáng hiệu dụng là vệt sáng trên scrim (data.js `scrimFor`, engine `_poseRig`, pathtrace)
-- [x] (chưa kiểm tra bằng mắt) Gobo trong chế độ chất lượng cao: đặt một tấm chắn có lỗ thật trước optical spot (pathtrace.js)
-- [x] Thử thách: app dựng ảnh mẫu từ một bố cục ẩn, người dùng dựng lại, chấm điểm bằng so sánh ảnh thu nhỏ (tab Học)
-- [ ] Tư thế ngồi + nụ cười: build_models.py ghi thêm thuộc tính `_SEATPOS/_SEATNRM` (thân, quần áo) và `_SMILE` (thân); app đổi thuộc tính và thêm ghế
-- [ ] Kiểm tra, README, tăng CACHE, gộp vào main
+Chưa kiểm tra bằng mắt: gobo trong chế độ chất lượng cao (tấm chắn có lỗ trước optical spot).
 
-Nguồn dữ liệu dựng mẫu nằm ở /tmp/claude-0/-home-user-ielts-payroll/2a9d2870-e6d0-512a-b6d9-531b737bbb3b/scratchpad/mh (repo, makehuman-data, pack); nếu mất thì tải lại theo chú thích đầu tools/build_models.py.
-
+## Việc tiếp theo (chờ người dùng duyệt)
+- Cần người dùng xác nhận trên thiết bị thật: tốc độ trên iPhone/iPad, chế độ chất lượng cao có chạy được không.
+- Ý tưởng thêm: nhiều biểu cảm hơn (nhắm mắt, nhướng mày — target có sẵn trong MakeHuman), tư thế tay, mẫu trẻ em, thêm thử thách cho sản phẩm.

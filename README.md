@@ -22,7 +22,7 @@ python3 -m http.server 8080
 
 ## Tính năng / Features
 
-- **Người mẫu** (giai đoạn 2): nữ và nam, ba nhóm ngoại hình (Đông Á, châu Âu, châu Phi), trẻ hoặc lớn tuổi; 4 kiểu tóc nữ, 3 kiểu tóc nam, 7 màu tóc, 3 màu mắt, 6 màu áo; xoay, cúi/ngẩng và nghiêng đầu. Vẫn giữ mẫu đầu quét 3D.
+- **Người mẫu** (giai đoạn 2): nữ và nam, ba nhóm ngoại hình (Đông Á, châu Âu, châu Phi), trẻ hoặc lớn tuổi; 4 kiểu tóc nữ, 3 kiểu tóc nam, 7 màu tóc, 3 màu mắt, 6 màu áo; xoay, cúi/ngẩng và nghiêng đầu; tư thế đứng hoặc ngồi ghế đẩu; nụ cười chỉnh được. Vẫn giữ mẫu đầu quét 3D.
 - **Da** (giai đoạn 2): tán xạ dưới da xấp xỉ — mép bóng ngả đỏ ấm, ánh sáng xuyên qua phần mỏng như tai khi chiếu ngược.
 - **Mẫu chất liệu** (giai đoạn 3): 16 chất liệu (cotton, lụa, nhung, da thuộc, gỗ, giấy, nhựa bóng/mờ, cao su, inox xước, chrome, vàng, đồng, thủy tinh trong/mờ, sứ) trên 5 hình dạng, gồm cả tấm vải treo có nếp.
 - **Chụp chất lượng cao** (giai đoạn 3): nút "Chất lượng cao" dựng lại ảnh bằng path tracing — ánh sáng dội thật giữa mọi bề mặt, phản chiếu thật trên kim loại, khúc xạ qua thủy tinh. Đổi bất cứ gì sẽ hủy và quay về xem trực tiếp.
@@ -32,12 +32,13 @@ python3 -m http.server 8080
 - **Phụ kiện**: chóa tiêu chuẩn, softbox 60×90, octabox 120, stripbox 30×120, dù xuyên, dù phản bạc, beauty dish, snoot, parabolic sâu, Fresnel, barn doors, optical spot kèm gobo (cửa sổ, rèm lá, tán lá), lưới tổ ong.
 - **Gel màu**: CTO/CTB toàn phần và 1/2 (dịch nhiệt độ màu theo mired), 8 gel hiệu ứng.
 - **Xoay đèn tự do** ±180° để feather hoặc chĩa đèn vào phông.
-- **Hắt sáng / cờ**: tròn 80 và 110 cm, V-flat 1×2 m; trắng, bạc, vàng, đen.
+- **Hắt sáng / cờ / scrim**: tròn 80 và 110 cm, V-flat 1×2 m; trắng, bạc, vàng, đen, hoặc scrim (tấm tản: đèn chiếu xuyên qua thành nguồn sáng lớn và mềm, mất khoảng 2–3 stop).
 - **Phông**: giấy seamless 9 màu (có xanh chroma) và màu tùy chọn, hoặc cyclorama kín hai tường; khoảng cách chủ thể–phông; tường trắng/xám/đen.
 - **Máy ảnh**: tiêu cự, khẩu độ (có độ sâu trường ảnh), tốc độ, ISO, cân bằng trắng, vị trí máy, khung hình, lưu ảnh JPEG.
 - **Công cụ đo**: đo sáng từng đèn tại chủ thể (f-stop, độ lệch EV), tỉ lệ đèn chính:đèn phụ, histogram, false color theo vùng phơi sáng, cảnh báo cháy sáng, cảnh báo tốc độ đồng bộ flash.
 - **So sánh và ghi chép**: lưu ảnh A rồi bật/tắt để so với bố cục hiện tại; xuất sơ đồ ánh sáng PNG kèm danh sách thiết bị và thông số.
 - **Học**: tab Học có 9 bài ngắn (nghịch đảo bình phương, gắt/mềm, bốn kiểu sáng chân dung, tỉ lệ sáng, feathering, tách nền, nhiệt độ màu và gel, kim loại bóng, negative fill), mỗi bài dựng sẵn bố cục và gợi ý một thứ để thử; ngoài ra có 8 bố cục mẫu.
+- **Thử thách**: app chiếu sáng một chân dung bằng bố cục ẩn, bạn dựng lại ánh sáng từ ảnh mẫu rồi bấm chấm điểm (so ảnh thu nhỏ, thang 100); có thể xem và áp đáp án.
 
 ## Mô hình ánh sáng / Lighting model
 
@@ -46,7 +47,7 @@ python3 -m http.server 8080
 - Hai đầu dò ánh sáng đặt tại chủ thể: một cái nhìn thấy mặt đèn (cho phản chiếu trên da, kim loại, thủy tinh), một cái không (cho ánh sáng dội từ tường, sàn, phông và tấm hắt sáng).
 - Độ sâu trường ảnh và khử răng cưa cũng được cộng dồn bằng cách xê dịch máy ảnh trên khẩu độ thật (tiêu cự / 2N).
 
-Giới hạn hiện tại: ánh sáng dội là xấp xỉ theo một điểm tại chủ thể; tán xạ dưới da là xấp xỉ dựa trên bản đồ bóng, chưa phải mô phỏng đầy đủ; tóc là các mảng phẳng có vân, chưa phải từng sợi; người mẫu chỉ có tư thế đứng. Chế độ chất lượng cao không có tán xạ dưới da và bỏ qua vân nổi (bump) của chất liệu; trên điện thoại nó chạy chậm và ở độ phân giải thấp hơn.
+Giới hạn hiện tại: ánh sáng dội là xấp xỉ theo một điểm tại chủ thể; tán xạ dưới da là xấp xỉ dựa trên bản đồ bóng, chưa phải mô phỏng đầy đủ; tóc là các mảng phẳng có vân, chưa phải từng sợi; Chế độ chất lượng cao không có tán xạ dưới da và bỏ qua vân nổi (bump) của chất liệu; trên điện thoại nó chạy chậm và ở độ phân giải thấp hơn.
 
 ## Cấu trúc / Layout
 

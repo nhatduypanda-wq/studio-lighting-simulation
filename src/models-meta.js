@@ -14,7 +14,9 @@ export const MODEL_META = {
    "long01",
    "ponytail01",
    "short03"
-  ]
+  ],
+  "seatDrop": 0.3637,
+  "seatY": 0.7218
  },
  "female_asi_young": {
   "eyeY": 1.3954,
@@ -30,7 +32,9 @@ export const MODEL_META = {
    "long01",
    "ponytail01",
    "short03"
-  ]
+  ],
+  "seatDrop": 0.3371,
+  "seatY": 0.6638
  },
  "female_afr_young": {
   "eyeY": 1.5641,
@@ -46,7 +50,9 @@ export const MODEL_META = {
    "long01",
    "ponytail01",
    "short03"
-  ]
+  ],
+  "seatDrop": 0.3784,
+  "seatY": 0.7556
  },
  "female_cau_old": {
   "eyeY": 1.4896,
@@ -62,7 +68,9 @@ export const MODEL_META = {
    "long01",
    "ponytail01",
    "short03"
-  ]
+  ],
+  "seatDrop": 0.3577,
+  "seatY": 0.719
  },
  "female_asi_old": {
   "eyeY": 1.3932,
@@ -78,7 +86,9 @@ export const MODEL_META = {
    "long01",
    "ponytail01",
    "short03"
-  ]
+  ],
+  "seatDrop": 0.3403,
+  "seatY": 0.6808
  },
  "female_afr_old": {
   "eyeY": 1.5468,
@@ -94,7 +104,9 @@ export const MODEL_META = {
    "long01",
    "ponytail01",
    "short03"
-  ]
+  ],
+  "seatDrop": 0.3717,
+  "seatY": 0.75
  },
  "male_cau_young": {
   "eyeY": 1.6393,
@@ -109,7 +121,9 @@ export const MODEL_META = {
    "short02",
    "short04",
    "short01"
-  ]
+  ],
+  "seatDrop": 0.4159,
+  "seatY": 0.8333
  },
  "male_asi_young": {
   "eyeY": 1.5205,
@@ -124,7 +138,9 @@ export const MODEL_META = {
    "short02",
    "short04",
    "short01"
-  ]
+  ],
+  "seatDrop": 0.3873,
+  "seatY": 0.7531
  },
  "male_afr_young": {
   "eyeY": 1.7048,
@@ -139,7 +155,9 @@ export const MODEL_META = {
    "short02",
    "short04",
    "short01"
-  ]
+  ],
+  "seatDrop": 0.4117,
+  "seatY": 0.871
  },
  "male_cau_old": {
   "eyeY": 1.6145,
@@ -154,7 +172,9 @@ export const MODEL_META = {
    "short02",
    "short04",
    "short01"
-  ]
+  ],
+  "seatDrop": 0.3842,
+  "seatY": 0.8162
  },
  "male_asi_old": {
   "eyeY": 1.4961,
@@ -169,7 +189,9 @@ export const MODEL_META = {
    "short02",
    "short04",
    "short01"
-  ]
+  ],
+  "seatDrop": 0.3557,
+  "seatY": 0.7363
  },
  "male_afr_old": {
   "eyeY": 1.6791,
@@ -184,6 +206,8 @@ export const MODEL_META = {
    "short02",
    "short04",
    "short01"
-  ]
+  ],
+  "seatDrop": 0.3868,
+  "seatY": 0.8545
  }
 };

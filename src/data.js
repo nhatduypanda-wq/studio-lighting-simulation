@@ -95,7 +95,7 @@ export function defaultState() {
   const st = {
     v: 1,
     view: 'camera',
-    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
+    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, pose: 'standing', smile: 0, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
     set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray', kind: 'paper' },
     camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false, autoAvoid: true },
     items: PRESETS.rembrandt.items(),
@@ -258,7 +258,7 @@ export function subjectTarget(subject) {
   if (subject.type === 'portrait') {
     if (subject.model === 'scan') return { x: 0, y: 1.57, z: 0 };
     const m = modelMeta(subject);
-    return { x: 0, y: m.eyeY - 0.035, z: 0.03 };
+    return { x: 0, y: m.eyeY - 0.035 - (subject.pose === 'seated' ? m.seatDrop : 0), z: 0.03 };
   }
   return { x: 0, y: PRODUCT_Y[subject.type] ?? 1.05, z: 0 };
 }

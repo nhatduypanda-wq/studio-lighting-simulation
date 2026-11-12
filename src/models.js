@@ -515,6 +515,10 @@ function tex(name, srgb = true) {
 
 const TURN_PARS = `
 attribute float _turn;
+#ifdef USE_SMILE
+attribute vec3 _smile;
+uniform float uSmile;
+#endif
 uniform vec3 uTurn;
 uniform vec3 uPivot;
 mat3 turnMat( float w ) {
@@ -528,11 +532,11 @@ mat3 turnMat( float w ) {
 function withTurn(mat, U, isStd = true) {
   mat.onBeforeCompile = (shader) => {
     if (isStd) shader.uniforms.envMapDiffuse = envDiffuse;
-    shader.uniforms.uTurn = U.uTurn; shader.uniforms.uPivot = U.uPivot;
+    shader.uniforms.uTurn = U.uTurn; shader.uniforms.uPivot = U.uPivot; shader.uniforms.uSmile = U.uSmile;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\n' + TURN_PARS)
       .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nobjectNormal = turnMat( _turn ) * objectNormal;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed = turnMat( _turn ) * ( transformed - uPivot ) + uPivot;');
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef USE_SMILE\ntransformed += _smile * uSmile;\n#endif\ntransformed = turnMat( _turn ) * ( transformed - uPivot ) + uPivot;');
   };
   return mat;
 }
@@ -545,7 +549,7 @@ function turnDepth(U, map) {
 function buildModel(s, onReady) {
   const root = new THREE.Group();
   const meta = modelMeta(s);
-  const U = { uTurn: { value: new THREE.Vector3() }, uPivot: { value: new THREE.Vector3(meta.neck[0], meta.neck[1], meta.neck[2]) } };
+  const U = { uTurn: { value: new THREE.Vector3() }, uPivot: { value: new THREE.Vector3(meta.neck[0], meta.neck[1], meta.neck[2]) }, uSmile: { value: 0 } };
   const skinTex = tex(`skin_${modelKey(s)}.jpg`);
   const M = {
     skin: withTurn(new THREE.MeshPhysicalMaterial({ map: skinTex, bumpMap: skinTex, bumpScale: 0.35, roughness: 0.48, specularIntensity: 0.8, sheen: 0.2, sheenRoughness: 0.5, sheenColor: 0x4a2620 }), U),
@@ -555,8 +559,20 @@ function buildModel(s, onReady) {
     hair: withTurn(new THREE.MeshPhysicalMaterial({ roughness: 0.42, sheen: 0.6, sheenRoughness: 0.35, alphaTest: 0.18, alphaToCoverage: true, side: THREE.DoubleSide }), U),
     clothes: withTurn(new THREE.MeshPhysicalMaterial({ map: tex(`clothes_${s.model}.jpg`), normalMap: tex(`clothes_${s.model}_n.jpg`, false), roughness: 0.9, sheen: 0.35, sheenRoughness: 0.6, sheenColor: 0x555555, side: THREE.DoubleSide }), U),
   };
-  M.skin.defines.USE_SKIN = '';
+  M.skin.defines.USE_SKIN = ''; M.skin.defines.USE_SMILE = '';
   const depth = turnDepth(U);
+  // the figure and a stool live in `figure`; sitting swaps in the seated vertex positions
+  // and lowers the figure so the feet stay on the floor
+  const figure = new THREE.Group(); root.add(figure);
+  const stool = new THREE.Group(); stool.visible = false; root.add(stool);
+  {
+    const top = meta.seatY - meta.seatDrop, wood = std({ color: 0x3a2a1c, roughness: 0.6 }), metal = BLACK_METAL();
+    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.04, 32), wood); seat.position.set(0, top - 0.02, -0.02);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, top - 0.05, 12), metal); post.position.set(0, (top - 0.05) / 2 + 0.01, -0.02);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.02, 32), metal); foot.position.set(0, 0.01, -0.02);
+    stool.add(seat, post, foot); shadowed(stool);
+  }
+  const posed = []; // meshes that have seated positions
   const hairMeshes = {};
   let hairTexName = null;
   let current = s;
@@ -564,6 +580,14 @@ function buildModel(s, onReady) {
   const apply = (st) => {
     current = st;
     U.uTurn.value.set((st.yaw || 0) * Math.PI / 180, (st.pitch || 0) * Math.PI / 180, (st.tilt || 0) * Math.PI / 180);
+    U.uSmile.value = Math.max(0, Math.min(1, (st.smile || 0) / 100));
+    const seated = st.pose === 'seated';
+    figure.position.y = seated ? -meta.seatDrop : 0; stool.visible = seated;
+    for (const m of posed) {
+      const g = m.geometry, stand = g.userData.stand || (g.userData.stand = { position: g.attributes.position, normal: g.attributes.normal });
+      const pos = seated ? g.attributes._seatpos : stand.position, nrm = seated ? g.attributes._seatnrm : stand.normal;
+      if (g.attributes.position !== pos) { g.setAttribute('position', pos); g.setAttribute('normal', nrm); }
+    }
     const hc = HAIR_COLORS[st.hairColor] ?? HAIR_COLORS.black;
     M.hair.color.setHex(hc); M.hair.sheenColor.setHex(hc).multiplyScalar(1.6).addScalar(0.04);
     M.brows.color.setHex(hc).multiplyScalar(0.7);
@@ -584,7 +608,7 @@ function buildModel(s, onReady) {
       if (!geo[name]) return null;
       const m = new THREE.Mesh(geo[name], mat);
       m.castShadow = cast; m.receiveShadow = true; m.customDepthMaterial = depth; m.frustumCulled = false; m.userData.turnU = U;
-      root.add(m); return m;
+      figure.add(m); if (geo[name].attributes._seatpos) posed.push(m); return m;
     };
     add('body', M.skin); add('eyes', M.eyes, false); add('clothes', M.clothes);
     const b = add('brows', M.brows, false); if (b) b.customDepthMaterial = undefined;

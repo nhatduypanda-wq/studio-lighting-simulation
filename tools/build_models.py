@@ -102,6 +102,8 @@ def subtree(root_name):
 
 
 ARM = {'L': subtree('upperarm01.L____head'), 'R': subtree('upperarm01.R____head')}
+LEG_UP = {s: subtree(f'upperleg01.{s}____head') for s in 'LR'}
+LEG_LOW = {s: subtree(f'lowerleg01.{s}____head') for s in 'LR'}
 HEAD = subtree('head____head')
 TURN_OF_BONE = np.zeros(len(BONES))
 for i in HEAD: TURN_OF_BONE[i] = 1.0
@@ -131,6 +133,25 @@ def pose_arms(V, skin_i, skin_w, pivots):
     return out
 
 
+def rot_x(deg):
+    a = np.radians(deg); c, s = np.cos(a), np.sin(a)
+    return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+
+
+def pose_seat(V, V_morph):
+    """Sit the figure: thighs forward, shins down. Joint positions come from the unposed mesh."""
+    out = V.copy()
+    Rh, Rk = rot_x(-84.0), rot_x(84.0)
+    for side in 'LR':
+        hip = joint(V_morph, f'upperleg01.{side}____head'); knee = joint(V_morph, f'lowerleg01.{side}____head')
+        w_low = bone_weight(SKIN_I, SKIN_W, LEG_LOW[side])[:, None]
+        w_up = bone_weight(SKIN_I, SKIN_W, LEG_UP[side])[:, None] - w_low
+        thigh = (V - hip) @ Rh.T + hip
+        shin = (((V - knee) @ Rk.T + knee) - hip) @ Rh.T + hip
+        out += w_up * (thigh - V) + w_low * (shin - V)
+    return out
+
+
 def write_glb(path, meshes):
     """meshes: list of dict(name, pos, nrm, uv, turn, idx). Writes a minimal binary glTF."""
     bin_parts, views, accessors, gl_meshes, nodes = [], [], [], [], []
@@ -153,6 +174,8 @@ def write_glb(path, meshes):
             'TEXCOORD_0': add(m['uv'].astype('<f4'), 34962, 5126, 'VEC2'),
             '_TURN': add(m['turn'].astype('<f4'), 34962, 5126, 'SCALAR'),
         }
+        for key, attr in (('seatpos', '_SEATPOS'), ('seatnrm', '_SEATNRM'), ('smile', '_SMILE')):
+            if key in m: attrs[attr] = add(m[key].astype('<f4'), 34962, 5126, 'VEC3')
         big = len(m['pos']) > 65535
         ind = add(m['idx'].astype('<u4' if big else '<u2').reshape(-1), 34963, 5125 if big else 5123, 'SCALAR')
         gl_meshes.append({'name': m['name'], 'primitives': [{'attributes': attrs, 'indices': ind}]})
@@ -240,6 +263,11 @@ for g in GENDERS:
             m['pos'] = (m['pos'] - [0, floor, 0]) * SCALE
             return m
 
+        Vs = pose_seat(Vp, Vm)
+        seat_floor = Vs[[v for vi, uv, m in BASE_POLYS if m == BODY_MAT for v in vi]][:, 1].min()
+        smile_idx, smile_d = load_target(f'expression/units/{ETHNIC[e]}/mouth-corner-puller.target')
+        Dsmile = np.zeros_like(Vm); Dsmile[smile_idx] = smile_d
+
         meshes = []
         proxies = [('eyes', 'eyes/HighPolyEyes/HighPolyEyes.json'), ('brows', 'eyebrows/eyebrow001/eyebrow001.json'),
                    ('lashes', 'eyelashes/Eyelashes01/Eyelashes01.json')]
@@ -248,20 +276,31 @@ for g in GENDERS:
         dele = np.zeros(NV, dtype=bool)
         for name, rel in proxies:
             j, P, PUV, polys, pturn = fit_proxy(os.path.join(PUB, 'proxies', rel), Vm, Vp)
-            if name == 'clothes': dele |= np.array(j['metadata'].get('deleteVerts', [0] * NV), dtype=bool)
             mesh = build_mesh(name, P, polys, PUV, pturn)
-            if name == 'clothes': mesh['pos'] = mesh['pos'] + mesh['nrm'] * 0.06  # 6 mm of ease so skin never pokes through
+            if name == 'clothes':
+                dele |= np.array(j['metadata'].get('deleteVerts', [0] * NV), dtype=bool)
+                mesh['pos'] = mesh['pos'] + mesh['nrm'] * 0.06  # 6 mm of ease so skin never pokes through
+                _, Pseat, _, _, _ = fit_proxy(os.path.join(PUB, 'proxies', rel), Vm, Vs)
+                seat = build_mesh(name, Pseat, polys, PUV, pturn)
+                mesh['seatpos'] = (seat['pos'] + seat['nrm'] * 0.06 - [0, floor, 0]) * SCALE
+                mesh['seatnrm'] = seat['nrm']
             meshes.append(finish(mesh))
         # body with the faces under the clothes removed
-        meshes.append(finish(build_mesh('body', Vp, BASE_POLYS, BASE_UV, BODY_TURN,
-                                        keep=lambda vi, mat: mat == BODY_MAT and not all(dele[v] for v in vi))))
+        keep = lambda vi, mat: mat == BODY_MAT and not all(dele[v] for v in vi)
+        body = build_mesh('body', Vp, BASE_POLYS, BASE_UV, BODY_TURN, keep=keep)
+        seat = build_mesh('body', Vs, BASE_POLYS, BASE_UV, BODY_TURN, keep=keep)
+        body['seatpos'] = (seat['pos'] - [0, floor, 0]) * SCALE; body['seatnrm'] = seat['nrm']
+        body['smile'] = build_mesh('body', Dsmile, BASE_POLYS, BASE_UV, BODY_TURN, keep=keep)['pos'] * SCALE
+        meshes.append(finish(body))
         key = f'{g}_{e}_{age}'
         write_glb(os.path.join(OUT, key + '.glb'), meshes)
         eyes_pos = meshes[0]['pos']
         neck = (joint(Vp, 'neck02____head') - [0, floor, 0]) * SCALE
         top = meshes[-1]['pos'][:, 1].max()
         meta[key] = {'eyeY': round(float(eyes_pos[:, 1].mean()), 4), 'eyeZ': round(float(eyes_pos[:, 2].max()), 4),
-                     'neck': [round(float(x), 4) for x in neck], 'top': round(float(top), 4), 'hair': HAIR[g]}
+                     'neck': [round(float(x), 4) for x in neck], 'top': round(float(top), 4), 'hair': HAIR[g],
+                     'seatDrop': round(float((seat_floor - floor) * SCALE), 4),
+                     'seatY': round(float((min(joint(Vm, 'upperleg01.L____head')[1], joint(Vm, 'upperleg01.R____head')[1]) - floor) * SCALE - 0.1), 4)}
         print(key, 'verts', sum(len(m['pos']) for m in meshes), os.path.getsize(os.path.join(OUT, key + '.glb')) // 1024, 'KB', meta[key])
 
 json.dump(meta, open(os.path.join(OUT, 'meta.json'), 'w'), indent=1)

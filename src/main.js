@@ -265,6 +265,8 @@ function paneSubject() {
     } else {
       f.append(select(t('look'), s.eth, LOOKS.map((k) => [k, t('look.' + k)]), rebuild((v) => { s.eth = v; })));
       f.append(select(t('age'), s.age, AGES.map((k) => [k, t('age.' + k)]), rebuild((v) => { s.age = v; })));
+      f.append(select(t('pose'), s.pose || 'standing', [['standing', t('pose.standing')], ['seated', t('pose.seated')]], rebuild((v) => { s.pose = v; })));
+      f.append(slider(t('smile'), s.smile || 0, 0, 100, 5, (v) => `${v}%`, chg((v) => { s.smile = v; })));
       f.append(select(t('hair'), s.hair, [...modelMeta(s).hair.map((k) => [k, t('hair.' + k)]), ['none', t('hair.none')]], chg((v) => { s.hair = v; })));
       f.append(select(t('hairColor'), s.hairColor, Object.keys(HAIR_COLORS).map((k) => [k, t('hc.' + k)]), chg((v) => { s.hairColor = v; })));
       f.append(select(t('eyes'), s.eyes, EYE_COLORS.map((k) => [k, t('eye.' + k)]), chg((v) => { s.eyes = v; })));
