@@ -3,7 +3,7 @@
 // subject: one with the lamp faces (specular reflections) and one without (bounce light).
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
-import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightDir, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
+import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightDir, scrimFor, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
 import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree, setAssetCallback, goboTexture } from './models.js';
 
 // --- shader patches (must run before any material compiles) ---
@@ -244,6 +244,7 @@ export class Engine {
     this.frameMatrix = new THREE.Matrix4().multiplyMatrices(this.photoCam.projectionMatrix, this.photoCam.matrixWorldInverse);
 
     // equipment
+    this._scrimGlow = new Map();
     const seen = new Set();
     for (const item of state.items) {
       seen.add(item.id);
@@ -266,6 +267,7 @@ export class Engine {
       }
       this._poseRig(rig, item, state);
     }
+    for (const [id, rig] of this.rigs) if (rig.scrimMat) { const g = this._scrimGlow.get(id) || [0, 0, 0]; rig.scrimMat.color.setRGB(0.01 + g[0], 0.01 + g[1], 0.01 + g[2]); }
     for (const [id, rig] of this.rigs) if (!seen.has(id)) { this._dropRig(rig); this.rigs.delete(id); }
 
     this.lensRadius = cam.focal / 1000 / (2 * cam.aperture);
@@ -313,6 +315,20 @@ export class Engine {
       const area = m.shape === 'disc' ? Math.PI * m.r * m.r : m.w * m.h;
       const L = item.on ? I / area : 0;
       for (const f of rig.faces) f.material.color.setRGB(c[0] * L, c[1] * L, c[2] * L);
+      // shining through a scrim: the lit patch on the scrim replaces the lamp as the source
+      const sc = item.on ? scrimFor(item, state) : null;
+      rig.emit = null;
+      if (sc) {
+        const n = new THREE.Vector3(sc.normal.x, sc.normal.y, sc.normal.z);
+        rig.emit = { shape: 'disc', r: sc.r };
+        rig.center = new THREE.Vector3(sc.center.x, sc.center.y, sc.center.z);
+        rig.right = new THREE.Vector3(0, 1, 0).cross(n).normalize();
+        rig.up = n.clone().cross(rig.right).normalize();
+        l.intensity = I * sc.k; l.angle = 70 * Math.PI / 180; l.penumbra = 0.9; if (l.map) l.map = null;
+        l.target.position.copy(T); l.target.updateMatrixWorld();
+        const g = this._scrimGlow.get(sc.panel) || [0, 0, 0], Lp = I * sc.k / (Math.PI * sc.limit * sc.limit);
+        this._scrimGlow.set(sc.panel, [g[0] + c[0] * Lp, g[1] + c[1] * Lp, g[2] + c[2] * Lp]);
+      }
     }
     // stand under the lamp body
     const off = rig.standOffset;
@@ -342,7 +358,7 @@ export class Engine {
     for (const rig of this.rigs.values()) {
       if (!rig.light) continue;
       i++;
-      const l = rig.light, m = rig.spec;
+      const l = rig.light, m = rig.emit || rig.spec;
       l.position.copy(rig.center);
       if (n > 0) {
         let u = (halton(n, 2) + i * 0.381966) % 1, w = (halton(n, 3) + i * 0.618034) % 1;

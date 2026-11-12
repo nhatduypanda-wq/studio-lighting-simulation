@@ -14,8 +14,8 @@ Lưu ý khi thử: path tracing rất nặng trên máy giả lập không có G
 
 ## Giai đoạn 5 — các việc còn lại (đang làm, nhánh `phase-5`)
 
-- [ ] Scrim: bề mặt 'scrim' cho tấm hắt sáng; đèn chiếu xuyên qua thì nguồn sáng hiệu dụng là vệt sáng trên scrim (data.js `scrimFor`, engine `_poseRig`, pathtrace)
-- [ ] Gobo trong chế độ chất lượng cao: đặt một tấm chắn có lỗ thật trước optical spot (pathtrace.js)
+- [x] Scrim: bề mặt 'scrim' cho tấm hắt sáng; đèn chiếu xuyên qua thì nguồn sáng hiệu dụng là vệt sáng trên scrim (data.js `scrimFor`, engine `_poseRig`, pathtrace)
+- [x] (chưa kiểm tra bằng mắt) Gobo trong chế độ chất lượng cao: đặt một tấm chắn có lỗ thật trước optical spot (pathtrace.js)
 - [ ] Thử thách: app dựng ảnh mẫu từ một bố cục ẩn, người dùng dựng lại, chấm điểm bằng so sánh ảnh thu nhỏ (tab Học)
 - [ ] Tư thế ngồi + nụ cười: build_models.py ghi thêm thuộc tính `_SEATPOS/_SEATNRM` (thân, quần áo) và `_SMILE` (thân); app đổi thuộc tính và thêm ghế
 - [ ] Kiểm tra, README, tăng CACHE, gộp vào main

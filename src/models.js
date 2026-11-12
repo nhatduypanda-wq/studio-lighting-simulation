@@ -277,7 +277,9 @@ export function buildLightRig(item) {
 export function buildPanelRig(item) {
   const p = PANELS[item.size] || PANELS.disc110;
   const s = PANEL_SURFACES[item.surface] || PANEL_SURFACES.white;
-  const mat = std({ color: s.color, roughness: s.rough, metalness: s.metal, side: THREE.DoubleSide });
+  // a scrim is translucent and glows where lamps hit it; the engine sets its brightness
+  const mat = s.scrim ? new THREE.MeshBasicMaterial({ color: 0x050505, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })
+    : std({ color: s.color, roughness: s.rough, metalness: s.metal, side: THREE.DoubleSide });
   const head = new THREE.Group();
   if (p.shape === 'disc') {
     head.add(new THREE.Mesh(new THREE.CircleGeometry(p.r, 40), mat));
@@ -296,7 +298,9 @@ export function buildPanelRig(item) {
   stand.visible = p.shape === 'disc';
   const group = new THREE.Group();
   group.add(head, stand);
-  return { group, head, stand, faces: [], standOffset: -0.03, isPanel: true, panel: p };
+  const faces = [];
+  if (s.scrim) head.traverse((o) => { if (o.isMesh && o.material === mat) { o.castShadow = false; o.receiveShadow = false; faces.push(o); } });
+  return { group, head, stand, faces, standOffset: -0.03, isPanel: true, panel: p, scrimMat: s.scrim ? mat : null };
 }
 
 export function buildCameraRig() {

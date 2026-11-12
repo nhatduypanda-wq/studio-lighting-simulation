@@ -5,6 +5,19 @@
 import * as THREE from 'three';
 import { WebGLPathTracer, PhysicalSpotLight, ShapedAreaLight, PhysicalCamera } from '../vendor/three-gpu-pathtracer.js';
 import { ASPECTS, sensorSize } from './data.js';
+import { goboTexture } from './models.js';
+
+// A real gobo: a black plate with holes, placed in front of the optical spot.
+function goboPlate(id, size) {
+  const src = goboTexture(id).image, n = src.width, c = document.createElement('canvas'); c.width = c.height = n;
+  const g = c.getContext('2d'); g.drawImage(src, 0, 0);
+  const img = g.getImageData(0, 0, n, n), d = img.data;
+  for (let i = 0; i < d.length; i += 4) { d[i + 3] = d[i] > 128 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = 0; }
+  g.putImageData(img, 0, 0);
+  const map = new THREE.CanvasTexture(c);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x000000, map, alphaTest: 0.5, transparent: true, side: THREE.DoubleSide, roughness: 1 });
+  return { mesh: new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat), map, mat };
+}
 
 const AREA_MODS = new Set(['softbox', 'octa', 'strip', 'umb_shoot', 'panel', 'ring', 'tube']);
 
@@ -57,7 +70,12 @@ export class HighQuality {
       const m = rig.spec, grid = rig.item && rig.item.grid && m.hasGrid;
       const area = m.shape === 'disc' ? Math.PI * m.r * m.r : m.w * m.h;
       let light;
-      if (AREA_MODS.has(m.id) && !grid) {
+      if (rig.emit) {
+        light = new ShapedAreaLight(l.color, l.intensity / (Math.PI * rig.emit.r * rig.emit.r), rig.emit.r * 2, rig.emit.r * 2);
+        light.isCircular = true;
+        light.position.copy(rig.center);
+        light.lookAt(engine.target);
+      } else if (AREA_MODS.has(m.id) && !grid) {
         const w = m.shape === 'disc' ? m.r * 2 : m.w, h = m.shape === 'disc' ? m.r * 2 : m.h;
         light = new ShapedAreaLight(l.color, l.intensity / area, w, h);
         light.isCircular = m.shape === 'disc';
@@ -69,6 +87,14 @@ export class HighQuality {
         light.position.copy(rig.center);
         light.target.position.copy(l.target.position);
         scene.add(light.target);
+        if (m.id === 'optical' && rig.item && rig.item.gobo && rig.item.gobo !== 'none') {
+          const dist = 0.35, dir = l.target.position.clone().sub(rig.center).normalize();
+          const plate = goboPlate(rig.item.gobo, 2 * dist * Math.tan(l.angle) * 1.2);
+          plate.mesh.position.copy(rig.center).addScaledVector(dir, dist);
+          plate.mesh.lookAt(rig.center);
+          scene.add(plate.mesh);
+          this.temp.push(plate.mesh.geometry, plate.map, plate.mat);
+        }
       }
       scene.add(light);
     }

@@ -372,7 +372,7 @@ function updateReadouts() {
   let H = 0, anyFlash = false; const each = [];
   for (const item of state.items) {
     if (item.kind !== 'light') continue;
-    const m = meterLight(item, T, cam);
+    const m = meterLight(item, T, cam, state);
     const node = document.querySelector(`[data-meter="${item.id}"]`);
     let text = t('meterOff');
     if (m) {
@@ -500,7 +500,7 @@ function exportDiagram() {
     let s = `${i + 1}. ${itemTitle(item)} — ${itemSub(item)}`;
     if (item.kind === 'light') { s += ` — ${fmtPower(item)}`; if (item.gel && item.gel !== 'none') s += ` — ${t('gel')}: ${t('gel.' + item.gel)}`; }
     lines.push(s);
-    const m = item.kind === 'light' ? meterLight(item, T, cam) : null;
+    const m = item.kind === 'light' ? meterLight(item, T, cam, state) : null;
     lines.push(`     ${fmtM(p.d)} · ${fmtDeg(p.a)} · ${t('height')} ${fmtM(item.h)}` + (m && m.N >= 0.5 ? ` · ${fmtF(m.N)}` : '') + (item.on === false ? ` · ${t('meterOff')}` : ''));
   });
   const W = dg.width, lh = 40, out = document.createElement('canvas');

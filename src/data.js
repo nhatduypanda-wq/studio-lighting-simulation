@@ -56,6 +56,7 @@ export const PANEL_SURFACES = {
   silver: { color: 0xffffff, rough: 0.6, metal: 0 },
   gold: { color: 0xffd9a0, rough: 0.6, metal: 0 },
   black: { color: 0x050505, rough: 1, metal: 0 },
+  scrim: { color: 0xf4f4f4, rough: 1, metal: 0, scrim: true },
 };
 
 export const SUBJECTS = ['portrait', 'material', 'spheres', 'bottle', 'vase', 'shaker'];
@@ -229,8 +230,17 @@ export function lightDir(item, target) {
 }
 
 // Incident-meter reading at the subject for one light: equivalent f-number at the camera's ISO/shutter.
-export function meterLight(item, target, cam) {
+export function meterLight(item, target, cam, state) {
   if (item.kind !== 'light' || !item.on) return null;
+  const sc = state ? scrimFor(item, state) : null;
+  if (sc) {
+    const tx = target.x - sc.center.x, ty = target.y - sc.center.y, tz = target.z - sc.center.z, d = Math.hypot(tx, ty, tz) || 1e-3;
+    const cos = Math.max(0, (tx * sc.normal.x + ty * sc.normal.y + tz * sc.normal.z) / d);
+    let H = axisIntensity(item) * gelTransmission(item) * sc.k * cos / (d * d);
+    if (!LIGHT_TYPES[item.type].flash) H /= cam.shutter;
+    const N = Math.sqrt(H * cam.iso / 250);
+    return { H, N, ev: N > 0 ? 2 * Math.log2(N / cam.aperture) : -Infinity, d, scrim: true };
+  }
   const m = modSpec(item), lt = LIGHT_TYPES[item.type];
   const dir = lightDir(item, target);
   const tx = target.x - item.x, ty = target.y - item.h, tz = target.z - item.z;
@@ -320,4 +330,30 @@ export function avoidCamera(state) {
     if (blocksSubject({ ...item, h: item.h - 0.1 }, state)) raised.add(item.id);
   }
   return { raised, stuck, changed };
+}
+
+// ---- scrim (diffusion frame) -----------------------------------------------------
+// If the line from a lamp to the subject passes through a scrim, the lamp no longer lights
+// the subject directly: the patch it lights on the scrim becomes the source. Returns that
+// patch (centre, radius, plane normal) and k, the factor from the lamp's on-axis intensity
+// to the patch's intensity towards the subject (half the light is transmitted, re-emitted
+// diffusely).
+export function scrimFor(item, state) {
+  const T = subjectTarget(state.subject);
+  for (const s of state.items) {
+    if (s.kind !== 'panel' || s.surface !== 'scrim' || s.on === false) continue;
+    const p = PANELS[s.size] || PANELS.disc110, disc = p.shape === 'disc';
+    const C = { x: s.x, y: disc ? s.h : p.h / 2, z: s.z }, lim = disc ? p.r : Math.min(p.w, p.h) / 2;
+    let nx = T.x - C.x, ny = disc ? T.y - C.y : 0, nz = T.z - C.z; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    const dx = T.x - item.x, dy = T.y - item.h, dz = T.z - item.z, den = dx * nx + dy * ny + dz * nz;
+    if (Math.abs(den) < 1e-4) continue;
+    const t = ((C.x - item.x) * nx + (C.y - item.h) * ny + (C.z - item.z) * nz) / den;
+    if (t <= 0.02 || t >= 0.98) continue;
+    const X = { x: item.x + dx * t, y: item.h + dy * t, z: item.z + dz * t };
+    if (Math.hypot(X.x - C.x, X.y - C.y, X.z - C.z) > lim) continue;
+    const d1 = Math.hypot(dx, dy, dz) * t;
+    const r = Math.max(0.05, Math.min(lim, d1 * Math.tan(modSpec(item).half * Math.PI / 180)));
+    return { center: X, r, k: 0.5 * r * r / (d1 * d1), normal: { x: nx, y: ny, z: nz }, panel: s.id, limit: lim };
+  }
+  return null;
 }
