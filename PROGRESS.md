@@ -21,10 +21,10 @@ Chưa kiểm tra bằng mắt: gobo trong chế độ chất lượng cao (tấm
 Thứ tự người dùng duyệt: 1 → 2 → 3 (chân dung trước) → 4 (làm hết, bỏ qua cảm biến) → 5. Mỗi việc xong: thử, [x], commit, gộp main.
 
 1. Bố cục + chủ thể
-- [ ] 1a. Bố cục chân dung: broad, short, high-key, low-key (data.js PRESETS + i18n)
-- [ ] 1b. Kính mắt cho người mẫu (models.js buildModel: gọng + tròng kính phản chiếu, theo đầu bằng _turn=1)
-- [ ] 1c. Bố cục sản phẩm: bright-field, dark-field (thủy tinh), tent lighting (kim loại)
-- [ ] 1d. Chủ thể mới: đồng hồ, nhẫn, hộp mỹ phẩm bóng, đồ ăn (đơn giản), bảng màu
+- [x] 1a. Bố cục chân dung: broad, short, high-key, low-key (data.js PRESETS + i18n)
+- [x] 1b. Kính mắt cho người mẫu (models.js buildModel: gọng + tròng kính phản chiếu, theo đầu bằng _turn=1)
+- [x] 1c. Bố cục sản phẩm: bright-field, dark-field (thủy tinh), tent lighting (kim loại)
+- [x] 1d. Chủ thể mới: đồng hồ, nhẫn, hộp mỹ phẩm bóng, đồ ăn (đơn giản), bảng màu
 2. Ánh sáng môi trường
 - [ ] 2a. Ánh sáng phòng (mức + nhiệt độ màu) — là ánh sáng liên tục nên phụ thuộc tốc độ màn trập; bài học "cân bằng flash với nền"
 - [ ] 2b. Đèn cửa sổ (nguồn sáng lớn liên tục 5600–6500 K đặt ở tường) 

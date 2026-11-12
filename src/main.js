@@ -11,7 +11,7 @@ import { LESSONS, applyLesson } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '5.1';
+const APP_VERSION = '6.1';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -86,8 +86,12 @@ function setPolar(item, d, a) {
 
 function applyPreset(id) {
   const p = PRESETS[id]; if (!p) return;
-  const dy = subjectTarget(state.subject).y - PRESET_FACE_Y;
+  state.subject.yaw = 0;
+  if (p.subject) Object.assign(state.subject, p.subject);
+  if (p.set) Object.assign(state.set, p.set);
+  const T0 = subjectTarget(state.subject), dy = T0.y - PRESET_FACE_Y;
   state.items = p.items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
+  if (p.subject && p.subject.type) { Object.assign(state.camera, PRODUCT_CAMERA[p.subject.type], { height: T0.y + 0.14, angle: 0 }); layout(); }
   if (p.camera) Object.assign(state.camera, p.camera);
   else Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600 });
   state.preset = id;
@@ -268,6 +272,7 @@ function paneSubject() {
       f.append(select(t('age'), s.age, AGES.map((k) => [k, t('age.' + k)]), rebuild((v) => { s.age = v; })));
       f.append(select(t('pose'), s.pose || 'standing', [['standing', t('pose.standing')], ['seated', t('pose.seated')]], rebuild((v) => { s.pose = v; })));
       f.append(slider(t('smile'), s.smile || 0, 0, 100, 5, (v) => `${v}%`, chg((v) => { s.smile = v; })));
+      f.append(check(t('glasses'), s.glasses, chg((v) => { s.glasses = v; })));
       f.append(select(t('hair'), s.hair, [...modelMeta(s).hair.map((k) => [k, t('hair.' + k)]), ['none', t('hair.none')]], chg((v) => { s.hair = v; })));
       f.append(select(t('hairColor'), s.hairColor, Object.keys(HAIR_COLORS).map((k) => [k, t('hc.' + k)]), chg((v) => { s.hairColor = v; })));
       f.append(select(t('eyes'), s.eyes, EYE_COLORS.map((k) => [k, t('eye.' + k)]), chg((v) => { s.eyes = v; })));

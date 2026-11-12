@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { materialParams, sampleGeometry } from './materials.js';
+import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
 import { ROOM, MODIFIERS, PANELS, PANEL_SURFACES, SKIN_TONES, HAIR_COLORS, CLOTHES_COLORS, modSpec, modelKey, modelMeta } from './data.js';
 
 // Diffuse image-based light comes from a second probe that excludes the lamp faces
@@ -48,7 +49,8 @@ export function buildBackdrop() {
   const pos = [], idx = [];
   prof.forEach(([z, y], i) => {
     pos.push(-W / 2, y + 0.004, z, W / 2, y + 0.004, z);
-    if (i) { const a = (i - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    // wound so the normals face the camera side; shadow lookups are offset along the normal
+    if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
   });
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -443,7 +445,55 @@ function buildProduct(type, st) {
   turn.position.y = 0.9;
   root.add(turn);
 
-  if (type === 'material') {
+  if (type === 'watch') {
+    const w = new THREE.Group();
+    const steel = std({ color: 0xd9d9d9, roughness: 0.14, metalness: 1 }), brushed = std({ color: 0xc8c8c8, roughness: 0.35, metalness: 1 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.0205, 0.011, 64), brushed);
+    const bezel = new THREE.Mesh(new THREE.TorusGeometry(0.0205, 0.0022, 12, 64), steel); bezel.rotation.x = Math.PI / 2; bezel.position.y = 0.0055;
+    const dial = new THREE.Mesh(new THREE.CircleGeometry(0.019, 64), std({ color: 0x0c1c3a, roughness: 0.45, metalness: 0.6 })); dial.rotation.x = -Math.PI / 2; dial.position.y = 0.0052;
+    const glass = new THREE.Mesh(new THREE.CircleGeometry(0.0195, 64), phys({ color: 0xffffff, roughness: 0, transmission: 1, thickness: 0.001, ior: 1.6 })); glass.rotation.x = -Math.PI / 2; glass.position.y = 0.0064;
+    w.add(body, bezel, dial, glass);
+    for (let i = 0; i < 12; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.0012, 0.0004, 0.004), steel); const a = i * Math.PI / 6; m.position.set(Math.sin(a) * 0.016, 0.0056, Math.cos(a) * 0.016); m.rotation.y = a; w.add(m); }
+    for (const [len, a] of [[0.011, 1.0], [0.015, -0.9]]) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.0014, 0.0005, len), steel); h.position.set(Math.sin(a) * len / 2, 0.0059, Math.cos(a) * len / 2); h.rotation.y = a; w.add(h); }
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.004, 16), steel); crown.rotation.z = Math.PI / 2; crown.position.x = 0.023; w.add(crown);
+    const leather = phys({ ...materialParams('leather'), color: 0x2a170c });
+    for (const sz of [-1, 1]) { const strap = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.0035, 0.055), leather); strap.position.set(0, -0.002, sz * 0.047); strap.rotation.x = sz * 0.22; w.add(strap); }
+    w.rotation.x = 1.0; w.position.set(0, 0.045, 0);
+    const block = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.04), phys({ color: 0x050505, roughness: 0.08, clearcoat: 1 })); block.position.set(0, 0.015, -0.03);
+    turn.add(w, block);
+  } else if (type === 'ring') {
+    const gold = std({ color: 0xffc66b, roughness: 0.12, metalness: 1 });
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.0095, 0.0013, 16, 96), gold); band.position.y = 0.0108;
+    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.0028, 0.0018, 0.003, 6), gold); seat.position.y = 0.0222;
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.0034, 0), phys({ color: 0xffffff, roughness: 0, transmission: 1, thickness: 0.004, ior: 2.4, flatShading: true })); gem.scale.y = 0.75; gem.position.y = 0.0262;
+    turn.add(band, seat, gem); turn.rotation.y = 0.5;
+  } else if (type === 'cosmetics') {
+    const blackGloss = phys({ color: 0x070707, roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.02 }), gold = std({ color: 0xe9b96e, roughness: 0.2, metalness: 1 });
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.05, 48), blackGloss); tube.position.set(-0.06, 0.025, 0.01);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.0113, 0.0113, 0.006, 48), gold); band.position.set(-0.06, 0.053, 0.01);
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.0085, 0.022, 32), phys({ color: 0xa3122b, roughness: 0.3, sheen: 0.5 })); stick.position.set(-0.06, 0.067, 0.01);
+    const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.028, 0.035, 64), phys({ color: 0xf6efe6, roughness: 0.4, transmission: 0.6, thickness: 0.02 })); jar.position.set(0.015, 0.0175, 0);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.031, 0.031, 0.014, 64), gold); lid.position.set(0.015, 0.042, 0);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.11, 0.03), blackGloss); box.position.set(0.085, 0.055, -0.02); box.rotation.y = -0.4;
+    turn.add(tube, band, stick, jar, lid, box);
+  } else if (type === 'fruit') {
+    const plate = new THREE.Mesh(lathe([[0, 0.004], [0.06, 0.004], [0.1, 0.012], [0.125, 0.022], [0.127, 0.024], [0.1, 0.016], [0.06, 0.009], [0, 0.009]], 64), phys({ color: 0xf2efe8, roughness: 0.2, clearcoat: 0.8 }));
+    const peel = phys({ ...materialParams('paper'), color: 0xe8781a, roughness: 0.5, bumpScale: 1.5, clearcoat: 0.25, clearcoatRoughness: 0.4 });
+    const orange = new THREE.Mesh(new THREE.SphereGeometry(0.038, 64, 48), peel); orange.position.set(-0.035, 0.047, 0.005);
+    const apple = new THREE.Mesh(lathe([[0, 0.012], [0.02, 0.004], [0.034, 0.012], [0.04, 0.035], [0.036, 0.058], [0.022, 0.07], [0.006, 0.066], [0, 0.062]], 64), phys({ color: 0x9c1418, roughness: 0.28, clearcoat: 0.6, clearcoatRoughness: 0.15 })); apple.position.set(0.045, 0.006, -0.01);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.0012, 0.0016, 0.018, 8), std({ color: 0x3b2a18, roughness: 0.8 })); stem.position.set(0.045, 0.077, -0.01); stem.rotation.z = 0.25;
+    turn.add(plate, orange, apple, stem);
+  } else if (type === 'chart') {
+    const cols = ['#735244', '#c29682', '#627a9d', '#576c43', '#8580b1', '#67bdaa', '#d67e2c', '#505ba6', '#c15a63', '#5e3c6c', '#9dbc40', '#e0a32e',
+      '#383d96', '#469449', '#af363c', '#e7c71f', '#bb5695', '#0885a1', '#f3f3f2', '#c8c8c8', '#a0a0a0', '#7a7a79', '#555555', '#343434'];
+    const c = document.createElement('canvas'); c.width = 600; c.height = 400; const g = c.getContext('2d');
+    g.fillStyle = '#101010'; g.fillRect(0, 0, 600, 400);
+    cols.forEach((col, i) => { g.fillStyle = col; g.fillRect(14 + (i % 6) * 97, 12 + Math.floor(i / 6) * 96, 86, 86); });
+    const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace;
+    const card = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.004), [0, 1, 2, 3].map(() => std({ color: 0x101010, roughness: 0.9 })).concat([std({ map, roughness: 0.9 }), std({ color: 0x101010, roughness: 0.9 })]));
+    card.position.y = 0.105; card.rotation.x = -0.12;
+    turn.add(card);
+  } else if (type === 'material') {
     const mat = phys({ ...materialParams(st.mat), side: st.shape === 'drape' ? THREE.DoubleSide : THREE.FrontSide });
     turn.add(new THREE.Mesh(sampleGeometry(st.shape), mat));
   } else if (type === 'spheres') {
@@ -546,6 +596,27 @@ function turnDepth(U, map) {
   return withTurn(m, U, false);
 }
 
+// Glasses: a frame and two flat lenses placed from the eye position in the model's metadata.
+// Every vertex gets _turn = 1 so they follow the head.
+function buildGlasses(meta) {
+  const y = meta.eyeY + 0.002, z = meta.eyeZ + 0.014, ex = 0.032, rx = 0.026, ry = 0.021;
+  const frame = [], lens = [];
+  for (const sx of [-1, 1]) {
+    const ring = new THREE.TorusGeometry(1, 0.075, 8, 40); ring.scale(rx, ry, rx); ring.translate(sx * ex, y, z); frame.push(ring);
+    const l = new THREE.CircleGeometry(1, 40); l.scale(rx * 0.97, ry * 0.97, 1); l.translate(sx * ex, y, z); lens.push(l);
+    // temple: from the hinge back to the ear
+    const t = new THREE.BoxGeometry(0.003, 0.004, 0.125); t.translate(sx * (ex + rx + 0.006), y + 0.004, z - 0.066); frame.push(t);
+    const hinge = new THREE.BoxGeometry(0.01, 0.005, 0.004); hinge.translate(sx * (ex + rx + 0.002), y + 0.004, z); frame.push(hinge);
+  }
+  const bridge = new THREE.CylinderGeometry(0.0017, 0.0017, 2 * (ex - rx) + 0.004, 8); bridge.rotateZ(Math.PI / 2); bridge.translate(0, y + 0.006, z); frame.push(bridge);
+  const finish = (list) => {
+    const g = mergeGeometries(list.map((x) => { const n = x.toNonIndexed(); n.deleteAttribute('uv'); return n; }));
+    g.setAttribute('_turn', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(1), 1));
+    return g;
+  };
+  return { frame: finish(frame), lens: finish(lens) };
+}
+
 function buildModel(s, onReady) {
   const root = new THREE.Group();
   const meta = modelMeta(s);
@@ -573,6 +644,13 @@ function buildModel(s, onReady) {
     stool.add(seat, post, foot); shadowed(stool);
   }
   const posed = []; // meshes that have seated positions
+  const gl = buildGlasses(meta);
+  const glasses = new THREE.Group();
+  const frameMesh = new THREE.Mesh(gl.frame, withTurn(new THREE.MeshPhysicalMaterial({ color: 0x0c0c0c, roughness: 0.25, clearcoat: 0.6 }), U));
+  frameMesh.castShadow = true; frameMesh.receiveShadow = true; frameMesh.customDepthMaterial = depth; frameMesh.userData.turnU = U; frameMesh.frustumCulled = false;
+  const lensMesh = new THREE.Mesh(gl.lens, withTurn(new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.0, transmission: 1, thickness: 0.002, ior: 1.5, side: THREE.DoubleSide }), U));
+  lensMesh.userData.turnU = U; lensMesh.frustumCulled = false;
+  glasses.add(frameMesh, lensMesh); figure.add(glasses);
   const hairMeshes = {};
   let hairTexName = null;
   let current = s;
@@ -581,6 +659,7 @@ function buildModel(s, onReady) {
     current = st;
     U.uTurn.value.set((st.yaw || 0) * Math.PI / 180, (st.pitch || 0) * Math.PI / 180, (st.tilt || 0) * Math.PI / 180);
     U.uSmile.value = Math.max(0, Math.min(1, (st.smile || 0) / 100));
+    glasses.visible = !!st.glasses;
     const seated = st.pose === 'seated';
     figure.position.y = seated ? -meta.seatDrop : 0; stool.visible = seated;
     for (const m of posed) {

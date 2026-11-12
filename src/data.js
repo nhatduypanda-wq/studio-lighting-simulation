@@ -59,7 +59,7 @@ export const PANEL_SURFACES = {
   scrim: { color: 0xf4f4f4, rough: 1, metal: 0, scrim: true },
 };
 
-export const SUBJECTS = ['portrait', 'material', 'spheres', 'bottle', 'vase', 'shaker'];
+export const SUBJECTS = ['portrait', 'material', 'spheres', 'bottle', 'vase', 'shaker', 'watch', 'ring', 'cosmetics', 'fruit', 'chart'];
 export const MODELS = ['female', 'male', 'scan'];
 export const LOOKS = ['asi', 'cau', 'afr'];
 export const AGES = ['young', 'old'];
@@ -95,7 +95,7 @@ export function defaultState() {
   const st = {
     v: 1,
     view: 'camera',
-    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, pose: 'standing', smile: 0, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
+    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, pose: 'standing', smile: 0, glasses: false, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
     set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray', kind: 'paper' },
     camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false, autoAvoid: true },
     items: PRESETS.rembrandt.items(),
@@ -147,6 +147,45 @@ export const PRESETS = {
   },
   hard: {
     items: () => [makeLight({ mod: 'standard', ...P(-40, 2.2), h: 2.3, stops: -4.7 })],
+  },
+  // Broad and short lighting: the head is turned; the key lights either the cheek facing the
+  // camera (broad, makes a face look wider) or the cheek turned away (short, slimmer, more depth).
+  broad: {
+    items: () => [makeLight({ mod: 'softbox', ...P(-50, 1.5), h: 2.0, stops: -2.3 })],
+    subject: { yaw: 30 },
+  },
+  short: {
+    items: () => [makeLight({ mod: 'softbox', ...P(65, 1.5), h: 2.0, stops: -2.3 })],
+    subject: { yaw: 30 },
+  },
+  highkey: {
+    items: () => [
+      makeLight({ mod: 'octa', ...P(-20, 1.6), h: 2.0, stops: -2.3 }),
+      makeLight({ mod: 'umb_shoot', ...P(25, 2.0), h: 1.7, stops: -3 }),
+      makeLight({ mod: 'umb_silver', x: -1.2, z: -0.7, h: 1.5, stops: -2, feather: 103 }),
+      makeLight({ mod: 'umb_silver', x: 1.2, z: -0.7, h: 1.5, stops: -2, feather: -103 }),
+    ],
+    set: { backdrop: 'white', backdropColor: BACKDROPS.white, backDist: 1.8, walls: 'white' },
+  },
+  lowkey: {
+    items: () => [makeLight({ mod: 'strip', grid: true, ...P(-80, 1.1), h: 1.8, stops: -2.7 })],
+    set: { backdrop: 'black', backdropColor: BACKDROPS.black, backDist: 2.5, walls: 'black' },
+  },
+  // Glass: light the background, not the glass. Bright field = glass in front of a lit
+  // surface (dark outlines); dark field = black behind, light skimming in from behind both sides.
+  brightfield: {
+    items: () => [makeLight({ mod: 'softbox', x: 0, z: -0.75, h: 1.67, stops: -5 })],
+    subject: { type: 'bottle', table: 'white', rot: 0 }, set: { walls: 'black', backdrop: 'black', backdropColor: BACKDROPS.black },
+  },
+  darkfield: {
+    items: () => [makeLight({ mod: 'strip', ...P(-140, 0.7), h: 1.67, stops: -3 }), makeLight({ mod: 'strip', ...P(140, 0.7), h: 1.67, stops: -3 })],
+    subject: { type: 'bottle', table: 'black', rot: 0 }, set: { walls: 'black', backdrop: 'black', backdropColor: BACKDROPS.black },
+  },
+  // Metal shows its surroundings: wrap it in large white surfaces.
+  tent: {
+    items: () => [makeLight({ mod: 'octa', ...P(-85, 0.75), h: 1.75, stops: -4.3 }), makeLight({ mod: 'octa', ...P(85, 0.75), h: 1.75, stops: -4.3 }),
+      makePanel({ size: 'disc110', surface: 'white', ...P(0, 0.75), h: 2.35 })],
+    subject: { type: 'shaker', table: 'white', rot: 0 }, set: { walls: 'white', backdrop: 'white', backdropColor: BACKDROPS.white },
   },
   continuous: {
     items: () => [
@@ -262,8 +301,10 @@ export function subjectTarget(subject) {
   }
   return { x: 0, y: PRODUCT_Y[subject.type] ?? 1.05, z: 0 };
 }
-const PRODUCT_Y = { material: 1.02, spheres: 0.985, bottle: 1.08, vase: 1.08, shaker: 1.04 };
+const PRODUCT_Y = { watch: 0.95, ring: 0.915, cosmetics: 0.96, fruit: 0.95, chart: 1.02, material: 1.02, spheres: 0.985, bottle: 1.08, vase: 1.08, shaker: 1.04 };
 export const PRODUCT_CAMERA = {
+  watch: { focal: 105, dist: 0.6, aspect: '1:1' }, ring: { focal: 135, dist: 0.5, aspect: '1:1' }, cosmetics: { focal: 85, dist: 0.8, aspect: '4:5' },
+  fruit: { focal: 85, dist: 0.9, aspect: '3:2' }, chart: { focal: 85, dist: 1.2, aspect: '3:2' },
   material: { focal: 85, aspect: '1:1', dist: 1.15 },
   spheres: { focal: 50, dist: 1.7, aspect: '3:2' },
   bottle: { focal: 85, dist: 1.35, aspect: '4:5' },
