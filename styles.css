@@ -126,3 +126,7 @@ dialog button { background: var(--accent); color: var(--accent-ink); border: 0; 
   body.tab-diagram .pane { display: block; }
   .tabs button[data-tab=diagram] { display: none; }
 }
+
+.lesson img.target { display: block; width: 150px; max-width: 60%; border-radius: 8px; margin: 0 0 8px; border: 1px solid var(--line); }
+.lesson .answer { margin: 0 0 8px; padding-left: 18px; font-size: 13px; color: var(--text); }
+.lesson .row { margin-bottom: 8px; }

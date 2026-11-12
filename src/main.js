@@ -304,8 +304,89 @@ function paneSet() {
   return f;
 }
 
+// ---- challenge: rebuild the lighting of a target photo -------------------------------
+const CHALLENGES = ['loop', 'rembrandt', 'butterfly', 'split', 'hard', 'clamshell', 'rim'];
+let challenge = null, challengeBusy = false;
+async function tinyPixels(blob) {
+  const bmp = await createImageBitmap(blob), c = document.createElement('canvas'); c.width = 40; c.height = 50;
+  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0, 40, 50);
+  return g.getImageData(0, 0, 40, 50).data;
+}
+function renderSettled() { // resolves once the live view has refined the current set
+  return new Promise((resolve) => {
+    const t0 = Date.now();
+    const tick = () => {
+      const e = engine;
+      if (!e || Date.now() - t0 > 20000 || (!pending && !e.dirty && e.envPasses === 0 && e.n >= Math.min(e.maxSamples, 32))) resolve(); else setTimeout(tick, 150);
+    };
+    setTimeout(tick, 300);
+  });
+}
+async function startChallenge(id) {
+  if (!engine || challengeBusy) return;
+  challengeBusy = true;
+  state.view = 'camera'; state.subject.type = 'portrait'; renderChrome(); layout();
+  const T = subjectTarget(state.subject), dy = T.y - PRESET_FACE_Y;
+  const target = PRESETS[id].items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
+  Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600, angle: 0, focal: 85, dist: 1.7, aspect: '4:5', height: T.y + 0.01, falseColor: false });
+  Object.assign(state.set, { walls: 'gray' });
+  state.items = target; state.selected = null; state.preset = 'custom';
+  commit({ rebuild: true });
+  await renderSettled();
+  const blob = await engine.snapshot();
+  if ($('abImg').src) URL.revokeObjectURL($('abImg').src);
+  const url = URL.createObjectURL(blob);
+  $('abImg').src = url; $('abView').hidden = false;
+  challenge = { id, target, px: await tinyPixels(blob), url, result: null, reveal: false };
+  const first = makeLight({ mod: 'softbox', x: 0.3, z: 1.6, h: T.y + 0.2, stops: -3 });
+  state.items = [first]; state.selected = first.id;
+  challengeBusy = false;
+  commit({ rebuild: true });
+}
+async function scoreChallenge() {
+  if (!challenge || !engine) return;
+  await renderSettled();
+  const cur = await tinyPixels(await engine.snapshot()), tgt = challenge.px;
+  let diff = 0, la = 0, lb = 0;
+  const lin = (v) => Math.pow(v / 255, 2.2);
+  for (let i = 0; i < cur.length; i += 4) {
+    diff += Math.abs(cur[i] - tgt[i]) + Math.abs(cur[i + 1] - tgt[i + 1]) + Math.abs(cur[i + 2] - tgt[i + 2]);
+    la += lin(cur[i + 1]); lb += lin(tgt[i + 1]);
+  }
+  diff /= cur.length / 4 * 3;
+  challenge.result = { score: Math.max(0, Math.min(100, Math.round(100 - 2.4 * diff))), ev: Math.log2((la + 1e-6) / (lb + 1e-6)) };
+  renderPane();
+}
+
 function paneLearn() {
   const f = document.createDocumentFragment();
+  const card = el('div', { class: 'lesson' }, el('h3', {}, t('challenge')), el('p', {}, t('challengeIntro')));
+  const pick = el('select', { 'aria-label': t('challenge') });
+  CHALLENGES.forEach((id, i) => { const o = el('option', { value: id }, `${t('challenge')} ${i + 1}`); if (challenge && challenge.id === id) o.selected = true; pick.append(o); });
+  card.append(el('div', { class: 'row' }, pick));
+  card.append(el('div', { class: 'btns' }, button(challenge ? t('challengeRestart') : t('challengeStart'), 'primary', () => startChallenge(pick.value))));
+  if (challenge) {
+    card.append(el('img', { class: 'target', src: challenge.url, alt: t('challengeTarget') }));
+    card.append(el('p', {}, t('challengeHow')));
+    card.append(el('div', { class: 'btns' }, button(t('challengeScore'), 'primary', scoreChallenge), button(t('challengeReveal'), '', () => { challenge.reveal = !challenge.reveal; renderPane(); })));
+    if (challenge.result) {
+      const r = challenge.result;
+      const ev = Math.abs(r.ev) < 0.25 ? t('challengeEvOk') : t(r.ev > 0 ? 'challengeBrighter' : 'challengeDarker', { s: num(Math.abs(r.ev), 1) });
+      card.append(el('div', { class: 'note' }, `${t('challengeResult', { n: r.score })} ${ev} ${t(r.score >= 85 ? 'challengeGreat' : r.score >= 65 ? 'challengeClose' : 'challengeFar')}`));
+    }
+    if (challenge.reveal) {
+      const T = subjectTarget(state.subject);
+      const ul = el('ul', { class: 'answer' });
+      ul.append(el('li', {}, t('preset.' + challenge.id)));
+      challenge.target.forEach((item) => {
+        const d = Math.hypot(item.x - T.x, item.z - T.z), a = Math.atan2(item.x - T.x, item.z - T.z) * 180 / Math.PI;
+        ul.append(el('li', {}, `${itemTitle(item)} · ${fmtM(d)} · ${fmtDeg(a)} · ${t('height')} ${fmtM(item.h)}` + (item.kind === 'light' ? ` · ${fmtPower(item)}` : '')));
+      });
+      card.append(ul);
+      card.append(el('div', { class: 'btns' }, button(t('challengeApply'), '', () => { state.items = challenge.target.map((i) => ({ ...i })); state.selected = state.items[0].id; commit({ rebuild: true }); })));
+    }
+  }
+  f.append(card);
   f.append(el('p', { class: 'hint' }, t('learnIntro')));
   LESSONS.forEach((ls, i) => {
     f.append(el('div', { class: 'lesson' },
