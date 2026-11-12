@@ -10,7 +10,16 @@ Dựng lại mẫu: `python3 tools/build_models.py --mh <makehuman> --data <make
 
 Lưu ý khi thử: path tracing rất nặng trên máy giả lập không có GPU; chỉ thử với cửa sổ nhỏ (khoảng 420×560) và dưới 60 mẫu, nếu không máy có thể bị treo.
 
-## Việc tiếp theo (chờ người dùng duyệt)
-- Thiết bị còn thiếu so với kế hoạch ban đầu: gel màu, gobo/optical spot, barn doors, scrim, parabolic, Fresnel, đèn ống, ring light, cyclorama, phông xanh.
-- Công cụ học: tỉ lệ key:fill, histogram, false color, xuất sơ đồ ánh sáng PNG, so sánh A/B, bài học/thử thách.
-- Người mẫu: thêm tư thế ngồi, biểu cảm, mẫu chất lượng cao hơn nếu người dùng cung cấp.
+## Giai đoạn 4 — thiết bị còn thiếu + công cụ học (đang làm, nhánh `phase-4`)
+
+Đánh dấu [x] khi xong và đã commit:
+- [ ] Gel màu (CTO/CTB theo mired, gel màu RGB) cho mọi đèn
+- [ ] Đèn mới: ring light, đèn ống; phụ kiện mới: parabolic, Fresnel, barn doors, optical spot + gobo
+- [ ] Xoay đèn tự do ±180° (để đánh phông); phông xanh, cyclorama
+- [ ] Tỉ lệ đèn chính:phụ, histogram, false color
+- [ ] Xuất sơ đồ ánh sáng PNG, so sánh A/B
+- [ ] Tab "Học": 9 bài học ngắn kèm bố cục dựng sẵn (src/lessons.js), hai ngôn ngữ
+- [ ] Kiểm tra điện thoại + 2 ngôn ngữ, README, tăng CACHE trong sw.js, gộp vào main
+
+Không làm trong đợt này: tư thế ngồi, scrim, chế độ thử thách chấm điểm.
+
