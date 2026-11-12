@@ -11,6 +11,7 @@ import { LESSONS, applyLesson } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
+const APP_VERSION = '5.1';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -303,6 +304,7 @@ function paneSet() {
   f.append(slider(t('backDist'), s.backDist, 0.4, 3.6, 0.05, fmtM, (v) => { s.backDist = v; commit(); }));
   f.append(select(t('walls'), s.walls, Object.keys(WALLS).map((k) => [k, t('walls.' + k)]), (v) => { s.walls = v; commit(); }));
   f.append(el('div', { class: 'btns' }, button(t('reset'), 'danger', resetAll), button(t('about'), '', () => $('about').showModal())));
+  f.append(el('p', { class: 'hint' }, `${t('version')} ${APP_VERSION}`));
   return f;
 }
 
@@ -426,7 +428,7 @@ function renderChrome() {
   $('saveBtn').textContent = t('savePhoto');
   if (!hqOn) $('hqBtn').textContent = t('hq');
   $('abSave').textContent = t('abSave'); $('abView').textContent = t('abView');
-  $('aboutTitle').textContent = `${t('appName')} — ${t('tagline')}`;
+  $('aboutTitle').textContent = `${t('appName')} ${APP_VERSION} — ${t('tagline')}`;
   $('aboutBody').textContent = t('aboutBody');
   $('aboutClose').textContent = t('close');
   const tabs = $('tabs'); tabs.replaceChildren();
@@ -645,5 +647,9 @@ import('./engine.js').then(({ Engine }) => {
 });
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
+  // when an updated service worker takes over, reload once so the page runs the new code
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js').then((reg) => reg.update()).catch(() => { /* offline support is optional */ });
 }
