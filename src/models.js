@@ -324,6 +324,7 @@ function buildPortrait(onReady) {
     const y = 0.3 - HEAD_HALF * HEAD_SCALE;
     const head = new THREE.Mesh(a.geometry, skin);
     const top = new THREE.Mesh(a.geometry, shirt);
+    top.userData.noHQ = true;
     for (const m of [head, top]) { m.scale.setScalar(HEAD_SCALE); m.position.set(0, y, 0); m.receiveShadow = true; pivot.add(m); }
     head.castShadow = true;
     pivot.remove(placeholder);
@@ -506,7 +507,7 @@ function buildModel(s, onReady) {
     const add = (name, mat, cast = true) => {
       if (!geo[name]) return null;
       const m = new THREE.Mesh(geo[name], mat);
-      m.castShadow = cast; m.receiveShadow = true; m.customDepthMaterial = depth; m.frustumCulled = false;
+      m.castShadow = cast; m.receiveShadow = true; m.customDepthMaterial = depth; m.frustumCulled = false; m.userData.turnU = U;
       root.add(m); return m;
     };
     add('body', M.skin); add('eyes', M.eyes, false); add('clothes', M.clothes);

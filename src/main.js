@@ -314,6 +314,7 @@ function renderChrome() {
   $('resetBtn').textContent = t('reset');
   $('aboutBtn').textContent = t('about');
   $('saveBtn').textContent = t('savePhoto');
+  if (!hqOn) $('hqBtn').textContent = t('hq');
   $('aboutTitle').textContent = `${t('appName')} — ${t('tagline')}`;
   $('aboutBody').textContent = t('aboutBody');
   $('aboutClose').textContent = t('close');
@@ -355,7 +356,7 @@ function updateReadouts() {
   $('warn').hidden = !sync; if (sync) $('warn').textContent = t('syncWarn');
   $('hud').textContent = `${cam.focal} mm · f/${cam.aperture} · 1/${cam.shutter} s · ISO ${cam.iso} · ${cam.wb} K` + (N >= 0.5 ? `  |  ${fmtEv(ev)} EV` : '');
   $('hud').hidden = state.view !== 'camera';
-  $('saveBtn').hidden = state.view !== 'camera';
+  $('saveBtn').hidden = $('hqBtn').hidden = state.view !== 'camera';
 }
 
 // ---- layout ---------------------------------------------------------------------------
@@ -411,6 +412,20 @@ $('saveBtn').addEventListener('click', async () => {
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });
+let hqOn = false;
+$('hqBtn').addEventListener('click', async () => {
+  if (!engine) return;
+  if (hqOn) { engine.stopHQ(); return; }
+  hqOn = true; $('hqBtn').classList.add('on'); $('hqBtn').textContent = t('hqPreparing');
+  // let the label paint before the (blocking) scene build and shader compile
+  await new Promise((r) => setTimeout(r, 60));
+  try { await engine.startHQ(); } catch (e) { console.error(e); hqEnd(true); }
+});
+function hqEnd(error) {
+  hqOn = false; $('hqBtn').classList.remove('on'); $('hqBtn').textContent = t('hq');
+  $('progress').style.width = '0';
+  if (error) alert(t('hqFail'));
+}
 new ResizeObserver(layout).observe($('stage'));
 wideMq.addEventListener('change', () => { renderChrome(); renderPane(); diagram.draw(); });
 
@@ -422,6 +437,12 @@ requestAnimationFrame(flush);
 
 import('./engine.js').then(({ Engine }) => {
   engine = new Engine($('gl'), { mobile });
+  engine.onHQ = (info) => {
+    if (!info || info.error) { if (hqOn) hqEnd(info && info.error); return; }
+    const done = info.samples >= info.target;
+    $('hqBtn').textContent = done ? t('hqDone') : `${t('hqStop')} ${Math.round(100 * info.samples / info.target)}%`;
+    $('progress').style.width = done ? '0' : Math.round(100 * info.samples / info.target) + '%';
+  };
   engine.onProgress = (p) => { $('progress').style.width = p >= 1 ? '0' : Math.round(p * 100) + '%'; };
   layout();
   engine.sync(state, true);

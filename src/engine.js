@@ -168,7 +168,21 @@ export class Engine {
 
   start() { requestAnimationFrame(this._loop); }
 
-  invalidate(env = true) { this.dirty = true; if (env) this.envPasses = 3; }
+  invalidate(env = true) { this.stopHQ(); this.dirty = true; if (env) this.envPasses = 3; }
+
+  // High-quality capture (path tracing). Any change to the set cancels it.
+  async startHQ() {
+    if (this.hq || this.view !== 'camera') return;
+    const { HighQuality } = await import('./pathtrace.js');
+    this.hq = new HighQuality(this);
+    this.hqSamples = 0;
+  }
+  stopHQ() {
+    if (!this.hq) return;
+    try { this.hq.dispose(); } catch (e) { console.warn(e); }
+    this.hq = null; this.dirty = true;
+    if (this.onHQ) this.onHQ(null);
+  }
 
   setSize(w, h) {
     const pr = this.pixelRatio;
@@ -216,7 +230,7 @@ export class Engine {
       if (!rig || rig.sig !== sig) {
         if (rig) this._dropRig(rig);
         rig = item.kind === 'light' ? buildLightRig(item) : buildPanelRig(item);
-        rig.sig = sig;
+        rig.sig = sig; rig.item = item;
         if (item.kind === 'light') {
           const l = rig.light = new THREE.SpotLight(0xffffff, 1, 0, 0.5, 0.5, 2);
           l.castShadow = true;
@@ -362,6 +376,12 @@ export class Engine {
   _loop() {
     requestAnimationFrame(this._loop);
     if (!this.state || !this.rtSample) return;
+    if (this.hq) {
+      if (this.hqSamples >= this.hq.target) return;
+      try { this.hqSamples = this.hq.step(); } catch (e) { console.error(e); this.stopHQ(); if (this.onHQ) this.onHQ({ error: true }); return; }
+      if (this.onHQ) this.onHQ({ samples: this.hqSamples, target: this.hq.target });
+      return;
+    }
     if (!this.dirty && this.n >= this.maxSamples) return;
     if (this.dirty) { this.n = 0; this.dirty = false; }
     const r = this.renderer;
@@ -383,7 +403,7 @@ export class Engine {
   }
 
   snapshot() {
-    this._show();
+    if (this.hq) this.hq.step(); else this._show();
     return new Promise((res) => this.canvas.toBlob(res, 'image/jpeg', 0.95));
   }
 }

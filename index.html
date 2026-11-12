@@ -14,7 +14,7 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="stylesheet" href="styles.css">
-<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js", "three-mesh-bvh": "./vendor/three-mesh-bvh.js", "three/examples/jsm/postprocessing/Pass.js": "./vendor/postprocessing/Pass.js" } }</script>
 </head>
 <body>
 <header class="bar">
@@ -36,7 +36,7 @@
     <div class="loading" id="loading"></div>
     <div class="hud" id="hud"></div>
     <div class="warn" id="warn" hidden></div>
-    <button type="button" class="save" id="saveBtn"></button>
+    <div class="stageBtns"><button type="button" class="save" id="hqBtn"></button><button type="button" class="save" id="saveBtn"></button></div>
     <div class="progress"><i id="progress"></i></div>
   </section>
   <aside class="side">
