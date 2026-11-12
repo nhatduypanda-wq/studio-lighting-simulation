@@ -1,7 +1,7 @@
 import { t, getLang, setLang } from './i18n.js';
 import {
   LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
-  GELS, GOBOS, BACKDROP_TYPES, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
+  GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
   APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
   defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA, avoidCamera,
 } from './data.js';
@@ -44,7 +44,7 @@ const fmtF = (n) => (n >= 0.7 ? `f/${n >= 10 ? Math.round(n) : num(n, 1)}` : '< 
 const fmtEv = (ev) => (ev >= 0 ? '+' : '−') + num(Math.abs(ev), 1);
 function fmtPower(item) {
   const lt = LIGHT_TYPES[item.type];
-  if (!lt.flash) return `${Math.round(100 * Math.pow(2, item.stops))}% · ${Math.round(lt.watts * Math.pow(2, item.stops))} W`;
+  if (!lt.flash) return `${Math.round(100 * Math.pow(2, item.stops))}%` + (lt.watts ? ` · ${Math.round(lt.watts * Math.pow(2, item.stops))} W` : '');
   const n = -item.stops, whole = Math.ceil(n - 0.01), frac = whole - n;
   const base = whole === 0 ? '1/1' : `1/${2 ** whole}`;
   return `${base}${frac > 0.05 ? ' +' + num(frac, 1) : ''} · ${Math.round(lt.ws * Math.pow(2, item.stops))} Ws`;
@@ -199,6 +199,7 @@ function paneLights() {
     if (modSpec(item).hasGrid) ed.append(check(t('grid'), item.grid, chg((v) => { item.grid = v; })));
     ed.append(slider(t('power'), item.stops, lt.flash ? -8 : -5, 0, 1 / 3, (v) => fmtPower({ ...item, stops: v }), chg((v) => { item.stops = Math.round(v * 3) / 3; })));
     if (!lt.flash) ed.append(slider(t('kelvin'), item.kelvin, 2700, 6500, 100, (v) => `${v} K`, chg((v) => { item.kelvin = v; })));
+    if (item.type === 'strobe') ed.append(check(t('modeling'), item.modeling, chg((v) => { item.modeling = v; })));
     ed.append(select(t('gel'), item.gel || 'none', Object.keys(GELS).map((k) => [k, t('gel.' + k)]), chg((v) => { item.gel = v; })));
     if (modSpec(item).id === 'optical') ed.append(select(t('gobo'), item.gobo || 'none', GOBOS.map((k) => [k, t('gobo.' + k)]), chg((v) => { item.gobo = v; })));
   } else {
@@ -307,6 +308,8 @@ function paneSet() {
   f.append(sw);
   f.append(select(t('bdKind'), s.kind || 'paper', BACKDROP_TYPES.map((k) => [k, t('bdKind.' + k)]), (v) => { s.kind = v; commit(); }));
   f.append(slider(t('backDist'), s.backDist, 0.4, 3.6, 0.05, fmtM, (v) => { s.backDist = v; commit(); }));
+  f.append(select(t('roomLux'), String(s.roomLux || 0), ROOM_LIGHT.levels.map((k) => [String(k), k ? `${k} lux` : t('roomOff')]), (v) => { s.roomLux = +v; commit({ rebuild: true }); }));
+  if (s.roomLux) f.append(select(t('roomK'), String(s.roomK || 3000), ROOM_LIGHT.kelvins.map((k) => [String(k), `${k} K`]), (v) => { s.roomK = +v; commit(); }));
   f.append(select(t('walls'), s.walls, Object.keys(WALLS).map((k) => [k, t('walls.' + k)]), (v) => { s.walls = v; commit(); }));
   f.append(el('div', { class: 'btns' }, button(t('reset'), 'danger', resetAll), button(t('about'), '', () => $('about').showModal())));
   f.append(el('p', { class: 'hint' }, `${t('version')} ${APP_VERSION}`));
@@ -481,6 +484,7 @@ function updateReadouts() {
   const N = Math.sqrt(H * cam.iso / 250);
   const ev = N > 0 ? 2 * Math.log2(N / cam.aperture) : -99;
   const line = N < 0.5 ? t('meterNone') : t('expoTotal', { f: fmtF(N), ev: fmtEv(ev), n: cam.aperture });
+  if (state.set.roomLux) H += state.set.roomLux / cam.shutter;
   each.sort((a, b) => b - a);
   let ratio = '';
   if (each.length >= 2 && each[1] > 0) { const r = each[0] / each[1]; ratio = ' ' + t('ratio', { r: r >= 10 ? Math.round(r) : num(r, 1), s: num(Math.log2(r), 1) }); }

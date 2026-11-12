@@ -26,9 +26,9 @@ Thứ tự người dùng duyệt: 1 → 2 → 3 (chân dung trước) → 4 (l�
 - [x] 1c. Bố cục sản phẩm: bright-field, dark-field (thủy tinh), tent lighting (kim loại)
 - [x] 1d. Chủ thể mới: đồng hồ, nhẫn, hộp mỹ phẩm bóng, đồ ăn (đơn giản), bảng màu
 2. Ánh sáng môi trường
-- [ ] 2a. Ánh sáng phòng (mức + nhiệt độ màu) — là ánh sáng liên tục nên phụ thuộc tốc độ màn trập; bài học "cân bằng flash với nền"
-- [ ] 2b. Đèn cửa sổ (nguồn sáng lớn liên tục 5600–6500 K đặt ở tường) 
-- [ ] 2c. Đèn modeling của flash (bật/tắt, liên tục, yếu)
+- [x] 2a. Ánh sáng phòng (mức + nhiệt độ màu) — là ánh sáng liên tục nên phụ thuộc tốc độ màn trập; bài học "cân bằng flash với nền"
+- [x] 2b. Đèn cửa sổ (nguồn sáng lớn liên tục 5600–6500 K đặt ở tường) 
+- [x] 2c. Đèn modeling của flash (bật/tắt, liên tục, yếu)
 3. Lưu / chia sẻ
 - [ ] 3a. Lưu nhiều bố cục có tên (localStorage), tải lại, xóa
 - [ ] 3b. Chia sẻ bố cục qua link (state nén trong #hash)

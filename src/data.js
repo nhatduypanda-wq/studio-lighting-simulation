@@ -11,6 +11,7 @@ export const LIGHT_TYPES = {
   panel: { flash: false, q: 9000, watts: 100, kelvin: 5600, mods: ['panel'] },
   ring: { flash: false, q: 5400, watts: 60, kelvin: 5600, mods: ['ring'] },
   tube: { flash: false, q: 3600, watts: 40, kelvin: 5600, mods: ['tube'] },
+  window: { flash: false, q: 24000, kelvin: 6000, mods: ['window'] },
 };
 const EXTRA_MODS = ['para', 'fresnel', 'barn', 'optical'];
 LIGHT_TYPES.strobe.mods.push(...EXTRA_MODS); LIGHT_TYPES.cob.mods.push(...EXTRA_MODS);
@@ -33,6 +34,7 @@ export const MODIFIERS = {
   optical: { shape: 'disc', r: 0.04, half: 11, pen: 0.04, gain: 3.0, depth: 0.3 },
   ring: { shape: 'disc', r: 0.23, half: 68, pen: 0.9, gain: 0.3, depth: 0.04 },
   tube: { shape: 'rect', w: 0.045, h: 1.2, half: 70, pen: 1.0, gain: 0.1, depth: 0.03 },
+  window: { shape: 'rect', w: 1.2, h: 1.5, half: 70, pen: 1.0, gain: 0.2, depth: 0.06 },
 };
 
 // Gels. Colour-correction gels shift the colour temperature by a number of mireds;
@@ -44,6 +46,9 @@ export const GELS = {
   red: { rgb: [1, 0.04, 0.03] }, orange: { rgb: [1, 0.33, 0.04] }, yellow: { rgb: [1, 0.85, 0.1] }, green: { rgb: [0.1, 0.9, 0.2] },
   teal: { rgb: [0.05, 0.7, 0.75] }, blue: { rgb: [0.05, 0.15, 1] }, purple: { rgb: [0.45, 0.1, 0.9] }, pink: { rgb: [1, 0.2, 0.55] },
 };
+// Modeling lamp of a studio strobe: a weak warm continuous lamp in the same modifier.
+export const MODELING = { lumens: 2500, kelvin: 3200 };
+export const ROOM_LIGHT = { levels: [0, 50, 200, 500], kelvins: [3000, 4000, 5600] };
 export const GOBOS = ['none', 'window', 'blinds', 'leaves'];
 
 export const PANELS = {
@@ -96,7 +101,7 @@ export function defaultState() {
     v: 1,
     view: 'camera',
     subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, pose: 'standing', smile: 0, glasses: false, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
-    set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray', kind: 'paper' },
+    set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray', kind: 'paper', roomLux: 0, roomK: 3000 },
     camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false, autoAvoid: true },
     items: PRESETS.rembrandt.items(),
     selected: null,
@@ -289,6 +294,7 @@ export function meterLight(item, target, cam, state) {
   const fall = smoothstep(Math.cos(half), Math.cos(half * (1 - m.pen)), cosT);
   let H = axisIntensity(item) * gelTransmission(item) * fall / (d * d);
   if (!lt.flash) H /= cam.shutter;
+  else if (item.modeling) H += MODELING.lumens * m.gain * fall / (d * d) / cam.shutter;
   const N = Math.sqrt(H * cam.iso / 250);
   return { H, N, ev: N > 0 ? 2 * Math.log2(N / cam.aperture) : -Infinity, d };
 }

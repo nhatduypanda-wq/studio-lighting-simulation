@@ -19,7 +19,7 @@ function goboPlate(id, size) {
   return { mesh: new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat), map, mat };
 }
 
-const AREA_MODS = new Set(['softbox', 'octa', 'strip', 'umb_shoot', 'panel', 'ring', 'tube']);
+const AREA_MODS = new Set(['softbox', 'octa', 'strip', 'umb_shoot', 'panel', 'ring', 'tube', 'window']);
 
 function bakeTurn(mesh) {
   const U = mesh.userData.turnU, src = mesh.geometry;

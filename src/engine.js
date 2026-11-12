@@ -3,7 +3,7 @@
 // subject: one with the lamp faces (specular reflections) and one without (bounce light).
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
-import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightDir, scrimFor, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
+import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightColor, MODELING, lightDir, scrimFor, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
 import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree, setAssetCallback, goboTexture } from './models.js';
 
 // --- shader patches (must run before any material compiles) ---
@@ -104,6 +104,9 @@ export class Engine {
     this.workLight = new THREE.HemisphereLight(0xffffff, 0x555555, 0.55);
     this.workLight.visible = false;
     this.scene.add(this.workLight);
+    // room lights: continuous, shadowless, part of the exposure (unlike the work light)
+    this.roomLight = new THREE.HemisphereLight(0xffffff, 0x808080, 0);
+    this.scene.add(this.roomLight);
 
     this.photoCam = new THREE.PerspectiveCamera(30, 1, 0.05, 40);
     this.viewCam = new THREE.PerspectiveCamera(48, 1, 0.05, 60);
@@ -217,6 +220,13 @@ export class Engine {
     this.backdrop.mat.color.set(state.set.backdropColor);
     this.backdrop.group.position.z = -state.set.backDist;
     this.backdrop.setKind(state.set.kind);
+    {
+      const E = (state.set.roomLux || 0) * exposureScale(state.camera, false), rc = lightColor(state.set.roomK || 3000, state.camera.wb);
+      this.roomLight.visible = E > 0;
+      this.roomLight.color.setRGB(rc[0] * E, rc[1] * E, rc[2] * E);
+      this.roomLight.groundColor.setRGB(rc[0] * E * 0.4, rc[1] * E * 0.4, rc[2] * E * 0.4);
+      this.roomLight.intensity = 1;
+    }
 
     const sig = subjectSig(state.subject);
     if (this.subjectType !== sig) {
@@ -295,12 +305,17 @@ export class Engine {
       const aim = v.b.set(pos.x + d.x * d.len, pos.y + d.y * d.len, pos.z + d.z * d.len);
       rig.head.lookAt(aim);
       const m = rig.spec, lt = LIGHT_TYPES[item.type];
+      // colour x intensity of the lamp; a strobe's modeling lamp adds a weak continuous part
       const I = axisIntensity(item) * exposureScale(state.camera, lt.flash);
-      const c = lightTint(item, state.camera.wb);
+      const c = lightTint(item, state.camera.wb).map((x) => x * I);
+      if (lt.flash && item.modeling) {
+        const mc = lightColor(MODELING.kelvin, state.camera.wb), mi = MODELING.lumens * m.gain * exposureScale(state.camera, false);
+        for (let k = 0; k < 3; k++) c[k] += mc[k] * mi;
+      }
       const l = rig.light;
       l.visible = !!item.on;
       l.color.setRGB(c[0], c[1], c[2]);
-      l.intensity = I;
+      l.intensity = 1;
       l.angle = m.half * Math.PI / 180;
       l.penumbra = m.pen;
       const gobo = m.id === 'optical' ? goboTexture(item.gobo) : null;
@@ -313,7 +328,7 @@ export class Engine {
       rig.up = new THREE.Vector3(0, 1, 0).applyQuaternion(rig.head.quaternion);
       // radiance of the emitting face so that it matches the spot light's intensity
       const area = m.shape === 'disc' ? Math.PI * m.r * m.r : m.w * m.h;
-      const L = item.on ? I / area : 0;
+      const L = item.on ? 1 / area : 0;
       for (const f of rig.faces) f.material.color.setRGB(c[0] * L, c[1] * L, c[2] * L);
       // shining through a scrim: the lit patch on the scrim replaces the lamp as the source
       const sc = item.on ? scrimFor(item, state) : null;
@@ -324,9 +339,9 @@ export class Engine {
         rig.center = new THREE.Vector3(sc.center.x, sc.center.y, sc.center.z);
         rig.right = new THREE.Vector3(0, 1, 0).cross(n).normalize();
         rig.up = n.clone().cross(rig.right).normalize();
-        l.intensity = I * sc.k; l.angle = 70 * Math.PI / 180; l.penumbra = 0.9; if (l.map) l.map = null;
+        l.intensity = sc.k; l.angle = 70 * Math.PI / 180; l.penumbra = 0.9; if (l.map) l.map = null;
         l.target.position.copy(T); l.target.updateMatrixWorld();
-        const g = this._scrimGlow.get(sc.panel) || [0, 0, 0], Lp = I * sc.k / (Math.PI * sc.limit * sc.limit);
+        const g = this._scrimGlow.get(sc.panel) || [0, 0, 0], Lp = sc.k / (Math.PI * sc.limit * sc.limit);
         this._scrimGlow.set(sc.panel, [g[0] + c[0] * Lp, g[1] + c[1] * Lp, g[2] + c[2] * Lp]);
       }
     }
@@ -334,6 +349,7 @@ export class Engine {
     const off = rig.standOffset;
     const fwd = v.c.set(0, 0, 1).applyQuaternion(rig.head.quaternion);
     const sx = rig.head.position.x + fwd.x * off, sz = rig.head.position.z + fwd.z * off, sy = rig.head.position.y + fwd.y * off;
+    rig.stand.visible = !(rig.isPanel && rig.panel.shape !== 'disc') && item.type !== 'window';
     rig.stand.position.set(sx, 0, sz);
     // A floor stand that would show in the photo is swapped for a ceiling mount.
     rig.hanging = state.camera.autoAvoid !== false && this._standInFrame(sx, sz, sy - 0.05);

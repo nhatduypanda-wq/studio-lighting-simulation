@@ -230,6 +230,16 @@ export function buildLightRig(item) {
       }
       break;
     }
+    case 'window': {
+      // a window frame with glazing bars; the daylight behind it is the emitter
+      const wood = std({ color: 0xe8e4dc, roughness: 0.6 });
+      const bar = (w, h, x, y) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.05), wood); b.position.set(x, y, 0.01); head.add(b); };
+      bar(m.w + 0.1, 0.05, 0, m.h / 2 + 0.025); bar(m.w + 0.1, 0.05, 0, -m.h / 2 - 0.025);
+      bar(0.05, m.h, -m.w / 2 - 0.025, 0); bar(0.05, m.h, m.w / 2 + 0.025, 0);
+      bar(0.03, m.h, 0, 0); bar(m.w, 0.03, 0, 0.15);
+      addFace(new THREE.PlaneGeometry(m.w, m.h), -0.02);
+      break;
+    }
     case 'ring': {
       const body = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.035, 10, 48), BLACK_METAL());
       body.position.z = -0.03; head.add(body);
@@ -258,7 +268,7 @@ export function buildLightRig(item) {
     base.position.set(0, -0.085, -0.02);
     body.add(top, base);
     body.position.z = frontHead ? 0.4 : -(back + 0.05);
-  } else if (item.type === 'panel' || item.type === 'ring' || item.type === 'tube') {
+  } else if (['panel', 'ring', 'tube', 'window'].includes(item.type)) {
     body = new THREE.Group();
   } else {
     body = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.26, 16), BLACK_METAL());
@@ -273,7 +283,7 @@ export function buildLightRig(item) {
   const stand = buildStand();
   const group = new THREE.Group();
   group.add(head, stand);
-  return { group, head, stand, faces, standOffset: frontHead ? 0.42 : -(back + (['panel', 'ring', 'tube'].includes(item.type) ? 0.03 : 0.13)), spec: m };
+  return { group, head, stand, faces, standOffset: frontHead ? 0.42 : -(back + (['panel', 'ring', 'tube', 'window'].includes(item.type) ? 0.03 : 0.13)), spec: m };
 }
 
 export function buildPanelRig(item) {

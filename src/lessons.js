@@ -15,6 +15,7 @@ export const LESSONS = [
   { id: 'colour', items: () => [L({ mod: 'octa', ...P(-35, 1.5), h: 2.0, stops: -2 }), L({ mod: 'standard', gel: 'blue', ...P(140, 1.6), h: 1.8, stops: -3.3 }),
     L({ mod: 'standard', gel: 'orange', ...P(-140, 1.6), h: 1.8, stops: -4.3 })], set: { walls: 'black' } },
   { id: 'metal', abs: true, subject: { type: 'shaker', table: 'black' }, items: () => [L({ mod: 'strip', ...P(-70, 0.7), h: 1.2, stops: -4 }), R({ size: 'disc80', ...P(70, 0.5), h: 1.1 })], set: { walls: 'black' } },
+  { id: 'ambient', items: () => [L({ mod: 'softbox', ...P(-40, 1.4), h: 2.0, stops: -2.3 })], set: { walls: 'white', roomLux: 200, roomK: 3000, backdrop: 'beige', backdropColor: '#c9b79c', backDist: 3 } },
   { id: 'flag', items: () => [L({ mod: 'softbox', ...P(-70, 1.2), h: 1.8, stops: -3 }), R({ size: 'vflat', surface: 'black', ...P(80, 0.7), h: 1 })], set: { walls: 'white' } },
 ];
 
