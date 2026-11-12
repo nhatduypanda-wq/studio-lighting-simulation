@@ -9,7 +9,11 @@ export const LIGHT_TYPES = {
   speedlight: { flash: true, q: 1520, ws: 76, kelvin: 5600, mods: ['speedhead', 'softbox', 'umb_shoot', 'umb_silver', 'snoot'] },
   cob: { flash: false, q: 27000, watts: 300, kelvin: 5600, mods: ['standard', 'softbox', 'octa', 'strip', 'umb_shoot', 'umb_silver', 'dish', 'snoot'] },
   panel: { flash: false, q: 9000, watts: 100, kelvin: 5600, mods: ['panel'] },
+  ring: { flash: false, q: 5400, watts: 60, kelvin: 5600, mods: ['ring'] },
+  tube: { flash: false, q: 3600, watts: 40, kelvin: 5600, mods: ['tube'] },
 };
+const EXTRA_MODS = ['para', 'fresnel', 'barn', 'optical'];
+LIGHT_TYPES.strobe.mods.push(...EXTRA_MODS); LIGHT_TYPES.cob.mods.push(...EXTRA_MODS);
 
 // gain = on-axis candela per lumen. half = beam half-angle, pen = edge softness (0..1).
 export const MODIFIERS = {
@@ -23,7 +27,24 @@ export const MODIFIERS = {
   dish: { shape: 'disc', r: 0.275, half: 40, pen: 0.6, gain: 0.45, depth: 0.13, grid: { half: 20, pen: 0.5, gain: 0.4 } },
   snoot: { shape: 'disc', r: 0.03, half: 9, pen: 0.5, gain: 0.6, depth: 0.25 },
   panel: { shape: 'rect', w: 0.6, h: 0.4, half: 62, pen: 0.9, gain: 0.25, depth: 0.05 },
+  para: { shape: 'disc', r: 0.6, half: 26, pen: 0.6, gain: 0.95, depth: 0.55 },
+  fresnel: { shape: 'disc', r: 0.075, half: 15, pen: 0.2, gain: 2.4, depth: 0.18 },
+  barn: { shape: 'disc', r: 0.09, half: 24, pen: 0.12, gain: 0.84, depth: 0.12 },
+  optical: { shape: 'disc', r: 0.04, half: 11, pen: 0.04, gain: 3.0, depth: 0.3 },
+  ring: { shape: 'disc', r: 0.23, half: 68, pen: 0.9, gain: 0.3, depth: 0.04 },
+  tube: { shape: 'rect', w: 0.045, h: 1.2, half: 70, pen: 1.0, gain: 0.1, depth: 0.03 },
 };
+
+// Gels. Colour-correction gels shift the colour temperature by a number of mireds;
+// effect gels filter the light. `t` is the fraction of light transmitted.
+export const GELS = {
+  none: { t: 1 },
+  cto: { mired: 131, t: 0.55 }, ctoHalf: { mired: 64, t: 0.71 },
+  ctb: { mired: -131, t: 0.36 }, ctbHalf: { mired: -68, t: 0.52 },
+  red: { rgb: [1, 0.04, 0.03] }, orange: { rgb: [1, 0.33, 0.04] }, yellow: { rgb: [1, 0.85, 0.1] }, green: { rgb: [0.1, 0.9, 0.2] },
+  teal: { rgb: [0.05, 0.7, 0.75] }, blue: { rgb: [0.05, 0.15, 1] }, purple: { rgb: [0.45, 0.1, 0.9] }, pink: { rgb: [1, 0.2, 0.55] },
+};
+export const GOBOS = ['none', 'window', 'blinds', 'leaves'];
 
 export const PANELS = {
   disc80: { shape: 'disc', r: 0.4 },
@@ -47,7 +68,9 @@ export const CLOTHES_COLORS = { charcoal: 0x3a3a40, black: 0x121212, white: 0xe6
 export const modelKey = (s) => `${s.model}_${s.eth}_${s.age}`;
 export const modelMeta = (s) => MODEL_META[modelKey(s)] || MODEL_META.female_asi_young;
 export const SKIN_TONES = { light: [1, 1, 1], medium: [0.86, 0.74, 0.66], tan: [0.66, 0.5, 0.4], deep: [0.4, 0.28, 0.22] };
-export const BACKDROPS = { white: '#f4f4f2', lightgray: '#b9b9b9', gray: '#777777', black: '#0c0c0c', blue: '#3d5a80', beige: '#c9b79c', red: '#9b2d30', green: '#2f5d50' };
+export const BACKDROP_W = 2.72;
+export const BACKDROP_TYPES = ['paper', 'cyc'];
+export const BACKDROPS = { chroma: '#1fb141', white: '#f4f4f2', lightgray: '#b9b9b9', gray: '#777777', black: '#0c0c0c', blue: '#3d5a80', beige: '#c9b79c', red: '#9b2d30', green: '#2f5d50' };
 export const WALLS = { white: '#e8e8e8', gray: '#6e6e6e', black: '#111111' };
 
 export const APERTURES = [1.4, 1.8, 2, 2.8, 4, 5.6, 8, 11, 16, 22];
@@ -72,7 +95,7 @@ export function defaultState() {
     v: 1,
     view: 'camera',
     subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
-    set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray' },
+    set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray', kind: 'paper' },
     camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false, autoAvoid: true },
     items: PRESETS.rembrandt.items(),
     selected: null,
@@ -87,7 +110,7 @@ export const PRESET_FACE_Y = 1.57;
 
 // Positions use polar coordinates around the subject: a = angle from the camera axis
 // (0 = on the camera axis, + = camera right), d = distance, h = height.
-const P = (a, d) => ({ x: Math.sin(a * Math.PI / 180) * d, z: Math.cos(a * Math.PI / 180) * d });
+export const P = (a, d) => ({ x: Math.sin(a * Math.PI / 180) * d, z: Math.cos(a * Math.PI / 180) * d });
 
 export const PRESETS = {
   rembrandt: {
@@ -167,6 +190,22 @@ export function kelvinRGB(k) {
   return [lin(r), lin(g), lin(b)];
 }
 
+// Colour of one lamp including its gel, as linear RGB multipliers (not normalised:
+// a gel also absorbs light).
+export function lightTint(item, wb) {
+  const lt = LIGHT_TYPES[item.type], g = GELS[item.gel] || GELS.none;
+  let k = lt.flash ? lt.kelvin : item.kelvin;
+  if (g.mired) k = 1e6 / (1e6 / k + g.mired);
+  const c = lightColor(k, wb);
+  if (g.rgb) return [c[0] * g.rgb[0], c[1] * g.rgb[1], c[2] * g.rgb[2]];
+  return [c[0] * g.t, c[1] * g.t, c[2] * g.t];
+}
+// Fraction of the lamp's light that gets through its gel (for the meter).
+export function gelTransmission(item) {
+  const g = GELS[item.gel] || GELS.none;
+  return g.rgb ? 0.2126 * g.rgb[0] + 0.7152 * g.rgb[1] + 0.0722 * g.rgb[2] : g.t;
+}
+
 // Colour of a light as seen by a camera balanced for wb, luminance-normalised.
 export function lightColor(kelvin, wb) {
   const a = kelvinRGB(kelvin), w = kelvinRGB(wb);
@@ -199,7 +238,7 @@ export function meterLight(item, target, cam) {
   const cosT = (tx * dir.x + ty * dir.y + tz * dir.z) / d;
   const half = m.half * Math.PI / 180;
   const fall = smoothstep(Math.cos(half), Math.cos(half * (1 - m.pen)), cosT);
-  let H = axisIntensity(item) * fall / (d * d);
+  let H = axisIntensity(item) * gelTransmission(item) * fall / (d * d);
   if (!lt.flash) H /= cam.shutter;
   const N = Math.sqrt(H * cam.iso / 250);
   return { H, N, ev: N > 0 ? 2 * Math.log2(N / cam.aperture) : -Infinity, d };

@@ -13,9 +13,9 @@ Lưu ý khi thử: path tracing rất nặng trên máy giả lập không có G
 ## Giai đoạn 4 — thiết bị còn thiếu + công cụ học (đang làm, nhánh `phase-4`)
 
 Đánh dấu [x] khi xong và đã commit:
-- [ ] Gel màu (CTO/CTB theo mired, gel màu RGB) cho mọi đèn
-- [ ] Đèn mới: ring light, đèn ống; phụ kiện mới: parabolic, Fresnel, barn doors, optical spot + gobo
-- [ ] Xoay đèn tự do ±180° (để đánh phông); phông xanh, cyclorama
+- [x] Gel màu (CTO/CTB theo mired, gel màu RGB) cho mọi đèn
+- [x] Đèn mới: ring light, đèn ống; phụ kiện mới: parabolic, Fresnel, barn doors, optical spot + gobo
+- [x] Xoay đèn tự do ±180° (để đánh phông); phông xanh, cyclorama
 - [ ] Tỉ lệ đèn chính:phụ, histogram, false color
 - [ ] Xuất sơ đồ ánh sáng PNG, so sánh A/B
 - [ ] Tab "Học": 9 bài học ngắn kèm bố cục dựng sẵn (src/lessons.js), hai ngôn ngữ

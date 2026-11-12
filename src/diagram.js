@@ -1,5 +1,5 @@
 // Top-down lighting diagram: shows the set and lets the user drag lights and the camera.
-import { PANELS, PANEL_SURFACES, LIGHT_TYPES, ASPECTS, modSpec, lightDir, subjectTarget, cameraPose, sensorSize, kelvinRGB } from './data.js';
+import { PANELS, PANEL_SURFACES, LIGHT_TYPES, ASPECTS, modSpec, lightDir, subjectTarget, cameraPose, sensorSize, lightTint, BACKDROP_W } from './data.js';
 
 const REGION = { cx: 0, cz: 0.9, w: 6.6, h: 8.2 };
 export const LIMITS = { x: 3.3, zMin: -4.2, zMax: 5.2 };
@@ -73,12 +73,12 @@ export class Diagram {
     g.strokeStyle = '#4a4d52'; g.lineWidth = 2; g.strokeRect(this.X(-3.5), this.Z(-4.5), 7 * s, 10 * s);
 
     // backdrop paper
-    const bz = -st.set.backDist;
+    const bz = -st.set.backDist, bw = st.set.kind === 'cyc' ? 7 : BACKDROP_W;
     g.fillStyle = st.set.backdropColor; g.globalAlpha = 0.28;
-    g.fillRect(this.X(-1.36), this.Z(bz), 2.72 * s, 4.2 * s);
+    g.fillRect(this.X(-bw / 2), this.Z(bz), bw * s, 4.2 * s);
     g.globalAlpha = 1;
-    g.strokeStyle = st.set.backdropColor; g.lineWidth = 4; g.beginPath(); g.moveTo(this.X(-1.36), this.Z(bz)); g.lineTo(this.X(1.36), this.Z(bz)); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1; g.strokeRect(this.X(-1.36), this.Z(bz) - 2, 2.72 * s, 4);
+    g.strokeStyle = st.set.backdropColor; g.lineWidth = 4; g.beginPath(); g.moveTo(this.X(-bw / 2), this.Z(bz)); g.lineTo(this.X(bw / 2), this.Z(bz)); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1; g.strokeRect(this.X(-bw / 2), this.Z(bz) - 2, bw * s, 4);
 
     // camera with field of view
     const cp = cameraPose(st.camera, T);
@@ -117,7 +117,7 @@ export class Diagram {
       if (it.kind === 'light') {
         const d = lightDir(it, T); ang = Math.atan2(d.x, d.z);
         const m = modSpec(it); width = (m.shape === 'disc' ? m.r * 2 : m.w);
-        const lt = LIGHT_TYPES[it.type]; const k = kelvinRGB(lt.flash ? lt.kelvin : it.kelvin);
+        const k0 = lightTint(it, 5600), mx = Math.max(k0[0], k0[1], k0[2], 1e-3); const k = k0.map((v) => v / mx);
         const srgb = (v) => Math.round(255 * Math.pow(Math.min(1, v), 1 / 2.2));
         color = `rgb(${srgb(k[0])},${srgb(k[1])},${srgb(k[2])})`;
         if (it.on) {

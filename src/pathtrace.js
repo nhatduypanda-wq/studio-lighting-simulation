@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { WebGLPathTracer, PhysicalSpotLight, ShapedAreaLight, PhysicalCamera } from '../vendor/three-gpu-pathtracer.js';
 import { ASPECTS, sensorSize } from './data.js';
 
-const AREA_MODS = new Set(['softbox', 'octa', 'strip', 'umb_shoot', 'panel']);
+const AREA_MODS = new Set(['softbox', 'octa', 'strip', 'umb_shoot', 'panel', 'ring', 'tube']);
 
 function bakeTurn(mesh) {
   const U = mesh.userData.turnU, src = mesh.geometry;

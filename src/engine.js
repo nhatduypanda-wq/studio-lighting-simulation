@@ -3,8 +3,8 @@
 // subject: one with the lamp faces (specular reflections) and one without (bounce light).
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
-import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightColor, lightDir, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
-import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree, setAssetCallback } from './models.js';
+import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightDir, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
+import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree, setAssetCallback, goboTexture } from './models.js';
 
 // --- shader patches (must run before any material compiles) ---
 function patch(chunk, find, repl) {
@@ -211,6 +211,7 @@ export class Engine {
     this.room.wallMat.color.set(WALLS[state.set.walls] || WALLS.gray);
     this.backdrop.mat.color.set(state.set.backdropColor);
     this.backdrop.group.position.z = -state.set.backDist;
+    this.backdrop.setKind(state.set.kind);
 
     const sig = subjectSig(state.subject);
     if (this.subjectType !== sig) {
@@ -287,14 +288,15 @@ export class Engine {
       rig.head.lookAt(aim);
       const m = rig.spec, lt = LIGHT_TYPES[item.type];
       const I = axisIntensity(item) * exposureScale(state.camera, lt.flash);
-      const kel = lt.flash ? lt.kelvin : item.kelvin;
-      const c = lightColor(kel, state.camera.wb);
+      const c = lightTint(item, state.camera.wb);
       const l = rig.light;
       l.visible = !!item.on;
       l.color.setRGB(c[0], c[1], c[2]);
       l.intensity = I;
       l.angle = m.half * Math.PI / 180;
       l.penumbra = m.pen;
+      const gobo = m.id === 'optical' ? goboTexture(item.gobo) : null;
+      if (l.map !== gobo) l.map = gobo;
       l.target.position.copy(aim);
       l.target.updateMatrixWorld();
       rig.center = pos.clone();

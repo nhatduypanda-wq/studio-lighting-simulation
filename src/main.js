@@ -1,7 +1,7 @@
 import { t, getLang, setLang } from './i18n.js';
 import {
   LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
-  MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
+  GELS, GOBOS, BACKDROP_TYPES, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
   APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
   defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA, avoidCamera,
 } from './data.js';
@@ -192,6 +192,8 @@ function paneLights() {
     if (modSpec(item).hasGrid) ed.append(check(t('grid'), item.grid, chg((v) => { item.grid = v; })));
     ed.append(slider(t('power'), item.stops, lt.flash ? -8 : -5, 0, 1 / 3, (v) => fmtPower({ ...item, stops: v }), chg((v) => { item.stops = Math.round(v * 3) / 3; })));
     if (!lt.flash) ed.append(slider(t('kelvin'), item.kelvin, 2700, 6500, 100, (v) => `${v} K`, chg((v) => { item.kelvin = v; })));
+    ed.append(select(t('gel'), item.gel || 'none', Object.keys(GELS).map((k) => [k, t('gel.' + k)]), chg((v) => { item.gel = v; })));
+    if (modSpec(item).id === 'optical') ed.append(select(t('gobo'), item.gobo || 'none', GOBOS.map((k) => [k, t('gobo.' + k)]), chg((v) => { item.gobo = v; })));
   } else {
     ed.append(check(t('on'), item.on !== false, chg((v) => { item.on = v; }, { rebuild: true })));
     ed.append(select(t('surface'), item.surface, Object.keys(PANEL_SURFACES).map((k) => [k, t('surface.' + k)]), chg((v) => { item.surface = v; }, { rebuild: true })));
@@ -201,7 +203,7 @@ function paneLights() {
   ed.append(slider(t('distance'), Math.min(4.5, p.d), 0.3, 4.5, 0.05, fmtM, chg((v) => { setPolar(item, v, polar(item).a); })));
   ed.append(slider(t('angle'), p.a, -180, 180, 1, fmtDeg, chg((v) => { setPolar(item, Math.max(0.3, polar(item).d), v); })));
   if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(slider(t('height'), item.h, 0.2, 3.0, 0.05, fmtM, chg((v) => { item.h = v; })));
-  if (item.kind === 'light') ed.append(slider(t('feather'), item.feather || 0, -45, 45, 1, fmtDeg, chg((v) => { item.feather = v; })));
+  if (item.kind === 'light') ed.append(slider(t('feather'), item.feather || 0, -180, 180, 1, fmtDeg, chg((v) => { item.feather = v; })));
   ed.append(el('div', { class: 'btns' },
     button(t('duplicate'), '', () => {
       if (item.kind === 'light' && lightCount() >= MAX_LIGHTS) return;
@@ -290,6 +292,7 @@ function paneSet() {
   custom.addEventListener('input', () => { s.backdrop = 'custom'; s.backdropColor = custom.value; commit(); });
   sw.append(custom);
   f.append(sw);
+  f.append(select(t('bdKind'), s.kind || 'paper', BACKDROP_TYPES.map((k) => [k, t('bdKind.' + k)]), (v) => { s.kind = v; commit(); }));
   f.append(slider(t('backDist'), s.backDist, 0.4, 3.6, 0.05, fmtM, (v) => { s.backDist = v; commit(); }));
   f.append(select(t('walls'), s.walls, Object.keys(WALLS).map((k) => [k, t('walls.' + k)]), (v) => { s.walls = v; commit(); }));
   f.append(el('div', { class: 'btns' }, button(t('reset'), 'danger', resetAll), button(t('about'), '', () => $('about').showModal())));

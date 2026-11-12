@@ -69,7 +69,29 @@ export function buildBackdrop() {
     g.add(pole);
   }
   shadowed(g);
-  return { group: g, mat };
+  const fixtures = g.children.filter((c) => c !== paper);
+  // 'cyc' stretches the sweep wall to wall and removes the paper roll and its stands
+  const setKind = (kind) => { const cyc = kind === 'cyc'; paper.scale.x = cyc ? ROOM.w / W : 1; fixtures.forEach((f) => { f.visible = !cyc; }); };
+  return { group: g, mat, setKind };
+}
+
+// ---- gobos: patterns projected by the optical spot ----------------------------------
+const goboCache = new Map();
+export function goboTexture(id) {
+  if (!id || id === 'none') return null;
+  if (!goboCache.has(id)) {
+    const n = 512, c = document.createElement('canvas'); c.width = c.height = n;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0, 0, n, n); g.fillStyle = '#fff';
+    if (id === 'window') { for (const [x, y] of [[0.14, 0.1], [0.53, 0.1], [0.14, 0.52], [0.53, 0.52]]) g.fillRect(x * n, y * n, 0.33 * n, 0.38 * n); }
+    else if (id === 'blinds') { for (let i = 0; i < 9; i++) g.fillRect(0.08 * n, (0.08 + i * 0.095) * n, 0.84 * n, 0.05 * n); }
+    else { let s = 9; const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+      g.fillRect(0, 0, n, n); g.fillStyle = '#000';
+      for (let i = 0; i < 70; i++) { g.beginPath(); g.ellipse(r() * n, r() * n, 18 + r() * 40, 8 + r() * 16, r() * 6.3, 0, 7); g.fill(); } }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    goboCache.set(id, t);
+  }
+  return goboCache.get(id);
 }
 
 // ---- stands -------------------------------------------------------------------
@@ -183,6 +205,41 @@ export function buildLightRig(item) {
       addFace(new THREE.PlaneGeometry(m.w, m.h));
       break;
     }
+    case 'para': {
+      head.add(shell(m.r, 0.09, m.depth, 16, 1, 1, std({ color: 0x0a0a0a, roughness: 0.9, side: THREE.DoubleSide })));
+      addFace(new THREE.CircleGeometry(m.r, 16), -0.02);
+      break;
+    }
+    case 'fresnel': case 'optical': {
+      const tube = shell(m.r + 0.012, m.id === 'optical' ? 0.07 : 0.085, m.depth, 24, 1, 1, BLACK_METAL());
+      tube.material.side = THREE.DoubleSide; head.add(tube);
+      addFace(new THREE.CircleGeometry(m.r, 24), -0.008);
+      break;
+    }
+    case 'barn': {
+      head.add(shell(m.r, 0.05, m.depth, 24, 1, 1, std({ color: 0xbbbbbb, roughness: 0.35, metalness: 0.9, side: THREE.DoubleSide })));
+      addFace(new THREE.CircleGeometry(m.r, 24), -0.03);
+      for (let i = 0; i < 4; i++) { // four hinged flaps
+        const flap = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.004, 0.13), BLACK_METAL());
+        const a = i * Math.PI / 2;
+        flap.position.set(Math.cos(a) * 0.115, Math.sin(a) * 0.115, 0.055);
+        flap.rotation.z = a + Math.PI / 2; flap.rotateX(0.35);
+        head.add(flap);
+      }
+      break;
+    }
+    case 'ring': {
+      const body = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.035, 10, 48), BLACK_METAL());
+      body.position.z = -0.03; head.add(body);
+      addFace(new THREE.RingGeometry(0.17, m.r, 48));
+      break;
+    }
+    case 'tube': {
+      const g = new THREE.CylinderGeometry(m.w / 2, m.w / 2, m.h, 16);
+      addFace(g);
+      for (const sy of [-1, 1]) { const cap = new THREE.Mesh(new THREE.CylinderGeometry(m.w / 2 + 0.003, m.w / 2 + 0.003, 0.05, 16), BLACK_METAL()); cap.position.y = sy * (m.h / 2 + 0.02); head.add(cap); }
+      break;
+    }
     default: { // standard reflector
       const s = shell(m.r, 0.05, m.depth, 24, 1, 1, std({ color: 0xbbbbbb, roughness: 0.35, metalness: 0.9, side: THREE.DoubleSide }));
       head.add(s);
@@ -199,7 +256,7 @@ export function buildLightRig(item) {
     base.position.set(0, -0.085, -0.02);
     body.add(top, base);
     body.position.z = frontHead ? 0.4 : -(back + 0.05);
-  } else if (item.type === 'panel') {
+  } else if (item.type === 'panel' || item.type === 'ring' || item.type === 'tube') {
     body = new THREE.Group();
   } else {
     body = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.26, 16), BLACK_METAL());
@@ -214,7 +271,7 @@ export function buildLightRig(item) {
   const stand = buildStand();
   const group = new THREE.Group();
   group.add(head, stand);
-  return { group, head, stand, faces, standOffset: frontHead ? 0.42 : -(back + (item.type === 'panel' ? 0.03 : 0.13)), spec: m };
+  return { group, head, stand, faces, standOffset: frontHead ? 0.42 : -(back + (['panel', 'ring', 'tube'].includes(item.type) ? 0.03 : 0.13)), spec: m };
 }
 
 export function buildPanelRig(item) {
