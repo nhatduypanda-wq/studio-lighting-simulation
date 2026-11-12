@@ -11,7 +11,7 @@ import { LESSONS, applyLesson } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '6.1';
+const APP_VERSION = '6.2';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -20,16 +20,56 @@ let state = load();
 let tab = 'lights';
 let engine = null;
 
+// Fill in anything a stored or shared state is missing; reject what is not a state at all.
+function normalize(s) {
+  if (!s || s.v !== 1 || !Array.isArray(s.items)) return null;
+  const d = defaultState();
+  const items = s.items.filter((i) => i && (i.kind === 'light' || i.kind === 'panel') && Number.isFinite(i.x) && Number.isFinite(i.z) && Number.isFinite(i.h)).slice(0, 12);
+  return { ...d, ...s, items, subject: { ...d.subject, ...s.subject }, set: { ...d.set, ...s.set }, camera: { ...d.camera, ...s.camera }, view: 'camera' };
+}
+// A shared link carries the whole state in the URL fragment, base64url-encoded JSON.
+const encodeState = (st) => btoa(unescape(encodeURIComponent(JSON.stringify({ ...st, selected: null })))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function decodeState(text) {
+  try { return normalize(JSON.parse(decodeURIComponent(escape(atob(text.replace(/-/g, '+').replace(/_/g, '/')))))); } catch { return null; }
+}
 function load() {
+  const m = /^#s=([A-Za-z0-9_-]+)$/.exec(location.hash);
+  if (m) {
+    const shared = decodeState(m[1]);
+    history.replaceState(null, '', location.pathname + location.search);
+    if (shared) { shared.preset = 'custom'; shared.selected = shared.items[0]?.id ?? null; return shared; }
+  }
   try {
-    const s = JSON.parse(localStorage.getItem(STORE));
-    if (s && s.v === 1 && Array.isArray(s.items)) {
-      const d = defaultState();
-      return { ...d, ...s, subject: { ...d.subject, ...s.subject }, set: { ...d.set, ...s.set }, camera: { ...d.camera, ...s.camera }, view: 'camera' };
-    }
+    const s = normalize(JSON.parse(localStorage.getItem(STORE)));
+    if (s) return s;
   } catch { /* fall through */ }
   const d = defaultState(); d.preset = 'rembrandt'; d.selected = d.items[0]?.id ?? null; return d;
 }
+
+// ---- saved setups ------------------------------------------------------------------
+const SAVED = 'sl.saved.v1';
+function savedList() { try { const l = JSON.parse(localStorage.getItem(SAVED)); return Array.isArray(l) ? l : []; } catch { return []; } }
+function savedWrite(list) { try { localStorage.setItem(SAVED, JSON.stringify(list)); } catch { alert(t('savedFull')); } }
+function saveSetup() {
+  const name = (prompt(t('savedName'), `${t('savedDefault')} ${savedList().length + 1}`) || '').trim().slice(0, 60);
+  if (!name) return;
+  const list = savedList().filter((e) => e.name !== name);
+  list.unshift({ name, at: Date.now(), state: JSON.parse(JSON.stringify({ ...state, selected: null })) });
+  savedWrite(list.slice(0, 40)); renderPane();
+}
+function loadSetup(entry) {
+  const st = normalize(entry.state); if (!st) return;
+  st.preset = 'custom'; st.selected = st.items[0]?.id ?? null;
+  state = st; renderChrome(); layout(); commit({ rebuild: true });
+}
+async function shareSetup() {
+  const url = location.origin + location.pathname + '#s=' + encodeState(state);
+  try {
+    if (navigator.share) { await navigator.share({ title: t('appName'), url }); return; }
+    await navigator.clipboard.writeText(url); alert(t('shareCopied'));
+  } catch (e) { if (e && e.name === 'AbortError') return; prompt(t('shareManual'), url); }
+}
+
 let saveTimer = 0;
 function save() {
   clearTimeout(saveTimer);
@@ -311,6 +351,20 @@ function paneSet() {
   f.append(select(t('roomLux'), String(s.roomLux || 0), ROOM_LIGHT.levels.map((k) => [String(k), k ? `${k} lux` : t('roomOff')]), (v) => { s.roomLux = +v; commit({ rebuild: true }); }));
   if (s.roomLux) f.append(select(t('roomK'), String(s.roomK || 3000), ROOM_LIGHT.kelvins.map((k) => [String(k), `${k} K`]), (v) => { s.roomK = +v; commit(); }));
   f.append(select(t('walls'), s.walls, Object.keys(WALLS).map((k) => [k, t('walls.' + k)]), (v) => { s.walls = v; commit(); }));
+  // saved setups and sharing
+  f.append(el('div', { class: 'editor' }, el('h3', {}, t('savedTitle'))));
+  f.append(el('div', { class: 'btns' }, button(t('savedSave'), 'primary', saveSetup), button(t('share'), '', shareSetup)));
+  const saved = savedList();
+  if (saved.length) {
+    const ul = el('ul', { class: 'items' });
+    for (const entry of saved) {
+      ul.append(el('li', {},
+        el('span', { class: 'nm', onclick: () => loadSetup(entry) }, el('div', {}, entry.name), el('small', {}, new Date(entry.at).toLocaleDateString(getLang() === 'vi' ? 'vi-VN' : 'en-GB'))),
+        el('button', { type: 'button', class: 'ghost', onclick: () => loadSetup(entry) }, t('savedLoad')),
+        el('button', { type: 'button', class: 'ghost', 'aria-label': t('remove'), onclick: () => { if (confirm(t('savedDelete', { n: entry.name }))) { savedWrite(savedList().filter((e) => e.name !== entry.name)); renderPane(); } } }, '✕')));
+    }
+    f.append(ul);
+  } else f.append(el('p', { class: 'hint' }, t('savedNone')));
   f.append(el('div', { class: 'btns' }, button(t('reset'), 'danger', resetAll), button(t('about'), '', () => $('about').showModal())));
   f.append(el('p', { class: 'hint' }, `${t('version')} ${APP_VERSION}`));
   return f;

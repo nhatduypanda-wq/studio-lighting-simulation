@@ -30,8 +30,8 @@ Thứ tự người dùng duyệt: 1 → 2 → 3 (chân dung trước) → 4 (l�
 - [x] 2b. Đèn cửa sổ (nguồn sáng lớn liên tục 5600–6500 K đặt ở tường) 
 - [x] 2c. Đèn modeling của flash (bật/tắt, liên tục, yếu)
 3. Lưu / chia sẻ
-- [ ] 3a. Lưu nhiều bố cục có tên (localStorage), tải lại, xóa
-- [ ] 3b. Chia sẻ bố cục qua link (state nén trong #hash)
+- [x] 3a. Lưu nhiều bố cục có tên (localStorage), tải lại, xóa
+- [x] 3b. Chia sẻ bố cục qua link (state nén trong #hash)
 4. Không gian + tiện ích
 - [ ] 4a. Sàn: bê tông / gỗ / bóng; phông vải muslin, vinyl
 - [ ] 4b. Kích thước phòng chỉnh được

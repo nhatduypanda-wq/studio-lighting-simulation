@@ -1,5 +1,5 @@
 // Offline support: cache the app shell, serve from cache first and refresh in the background.
-const CACHE = 'studio-light-v9';
+const CACHE = 'studio-light-v10';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'src/main.js', 'src/engine.js', 'src/models.js', 'src/diagram.js', 'src/data.js', 'src/i18n.js', 'src/models-meta.js', 'src/materials.js', 'src/lessons.js', 'src/pathtrace.js',
