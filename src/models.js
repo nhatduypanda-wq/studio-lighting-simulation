@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { materialParams, sampleGeometry, woodFloorTexture, muslinTexture } from './materials.js';
 import { mergeGeometries } from '../vendor/BufferGeometryUtils.js';
-import { TENT, ROOM, MODIFIERS, PANELS, PANEL_SURFACES, SKIN_TONES, HAIR_COLORS, CLOTHES_COLORS, modSpec, modelKey, modelMeta } from './data.js';
+import { TENT, ROOM, MODIFIERS, PANELS, PANEL_SURFACES, SKIN_TONES, HAIR_COLORS, CLOTHES_COLORS, modSpec, modelKey, modelMeta, groupMembers } from './data.js';
 
 // Diffuse image-based light comes from a second probe that excludes the lamp faces
 // (lamps light surfaces through shadowed spot lights instead), so every physical
@@ -796,11 +796,19 @@ function buildModel(s, onReady) {
   return { group: root, update: apply };
 }
 
-export const subjectSig = (s) => (s.type === 'portrait' ? `portrait|${s.model === 'scan' ? 'scan' : modelKey(s)}` : s.type === 'material' ? `material|${s.mat}|${s.shape}` : s.type);
+// A group is several single models, each placed and posed from groupMembers().
+function buildGroup(s, onReady) {
+  const root = new THREE.Group();
+  const built = groupMembers(s).map((m) => { const b = buildModel(m.state, onReady); b.group.position.set(m.x, 0, m.z); root.add(b.group); return b; });
+  const update = (st) => groupMembers(st).forEach((m, i) => { if (built[i]) { built[i].group.position.set(m.x, 0, m.z); built[i].update(m.state); } });
+  return { group: root, update };
+}
+
+export const subjectSig = (s) => (s.type === 'portrait' ? `portrait|${s.model === 'scan' ? 'scan' : groupMembers(s).map((m) => modelKey(m.state)).join('+')}` : s.type === 'material' ? `material|${s.mat}|${s.shape}` : s.type);
 
 export function buildSubject(s, onReady) {
   if (s.type !== 'portrait') return buildProduct(s.type, s);
-  return s.model === 'scan' ? buildPortrait(onReady) : buildModel(s, onReady);
+  return s.model === 'scan' ? buildPortrait(onReady) : buildGroup(s, onReady);
 }
 
 export function disposeTree(obj) {

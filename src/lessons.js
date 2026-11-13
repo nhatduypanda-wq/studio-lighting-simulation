@@ -1,7 +1,7 @@
 // Short lessons: each one sets up the studio to demonstrate one lighting idea.
 // Light heights are authored for a face at PRESET_FACE_Y and shifted to the current model,
 // except where `abs` is set (product lessons).
-import { makeLight, makePanel, P, subjectTarget, PRESET_FACE_Y, PRODUCT_CAMERA } from './data.js';
+import { makeLight, makePanel, P, subjectTarget, groupCamera, PRESET_FACE_Y, PRODUCT_CAMERA } from './data.js';
 
 const L = (o) => makeLight(o), R = (o) => makePanel(o);
 export const LESSONS = [
@@ -16,16 +16,21 @@ export const LESSONS = [
     L({ mod: 'standard', gel: 'orange', ...P(-140, 1.6), h: 1.8, stops: -4.3 })], set: { walls: 'black' } },
   { id: 'metal', abs: true, subject: { type: 'shaker', table: 'black' }, items: () => [L({ mod: 'strip', ...P(-70, 0.7), h: 1.2, stops: -4 }), R({ size: 'disc80', ...P(70, 0.5), h: 1.1 })], set: { walls: 'black' } },
   { id: 'ambient', items: () => [L({ mod: 'softbox', ...P(-40, 1.4), h: 2.0, stops: -2.3 })], set: { walls: 'white', roomLux: 200, roomK: 3000, backdrop: 'beige', backdropColor: '#c9b79c', backDist: 3 } },
+  { id: 'gFalloff', subject: { group: 4, formation: 'row', spacing: 0.5 }, items: () => [L({ mod: 'softbox', ...P(-72, 1.25), h: 1.9, stops: -3 })], set: { walls: 'black', kind: 'cyc' } },
+  { id: 'gShadow', subject: { group: 3, formation: 'row', spacing: 0.42 }, items: () => [L({ mod: 'standard', ...P(-68, 2.4), h: 1.65, stops: -4.3 })], set: { walls: 'gray', kind: 'cyc' } },
+  { id: 'gDepth', subject: { group: 5, formation: 'rows', spacing: 0.5 }, camera: { aperture: 2.8 },
+    items: () => [L({ mod: 'umb_shoot', ...P(-40, 2.6), h: 2.3, stops: -4 }), L({ mod: 'umb_shoot', ...P(40, 2.6), h: 2.3, stops: -4 })], set: { walls: 'gray', kind: 'cyc' } },
   { id: 'flag', items: () => [L({ mod: 'softbox', ...P(-70, 1.2), h: 1.8, stops: -3 }), R({ size: 'vflat', surface: 'black', ...P(80, 0.7), h: 1 })], set: { walls: 'white' } },
 ];
 
 export function applyLesson(state, lesson) {
-  state.subject = { ...state.subject, type: 'portrait', yaw: 0, pitch: 0, tilt: 0, ...(lesson.subject || {}) };
+  state.subject = { ...state.subject, type: 'portrait', yaw: 0, pitch: 0, tilt: 0, group: 1, pose: 'standing', ...(lesson.subject || {}) };
+  if (state.subject.group > 1 && state.subject.model === 'scan') state.subject.model = 'female';
   Object.assign(state.set, lesson.set || {});
   const T = subjectTarget(state.subject), dy = lesson.abs ? 0 : T.y - PRESET_FACE_Y;
   state.items = lesson.items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
   Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600, angle: 0 },
-    state.subject.type === 'portrait' ? { focal: 85, dist: 2.1, aspect: '4:5', height: T.y + 0.01 } : { ...PRODUCT_CAMERA[state.subject.type], height: T.y + 0.14 });
+    state.subject.type === 'portrait' ? { ...groupCamera(state.subject), height: T.y + 0.01 } : { ...PRODUCT_CAMERA[state.subject.type], height: T.y + 0.14 }, lesson.camera || {});
   state.preset = 'custom';
   state.selected = state.items[0].id;
 }

@@ -1,7 +1,7 @@
 import { t, getLang, setLang } from './i18n.js';
 import {
   LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
-  ARM_POSES, GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, ROOM, ROOMS, FLOORS, MOUNTS, setRoom, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
+  FORMATIONS, groupMembers, groupSize, groupCamera, ARM_POSES, GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, ROOM, ROOMS, FLOORS, MOUNTS, setRoom, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
   APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
   defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA, avoidCamera,
 } from './data.js';
@@ -11,7 +11,7 @@ import { LESSONS, applyLesson } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '6.4';
+const APP_VERSION = '7.0';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -144,6 +144,7 @@ function applyPreset(id) {
   const T0 = subjectTarget(state.subject), dy = T0.y - PRESET_FACE_Y;
   state.items = p.items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
   if (p.subject && p.subject.type) { Object.assign(state.camera, PRODUCT_CAMERA[p.subject.type], { height: T0.y + 0.14, angle: 0 }); layout(); }
+  else if (p.subject && p.subject.group) { if (state.subject.model === 'scan') state.subject.model = 'female'; state.subject.type = 'portrait'; const T1 = subjectTarget(state.subject); Object.assign(state.camera, groupCamera(state.subject, camMax()), { height: T1.y + 0.01, angle: 0 }); layout(); }
   if (p.camera) Object.assign(state.camera, p.camera);
   else Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600 });
   state.preset = id;
@@ -207,6 +208,7 @@ function itemSub(item) {
 function paneLights() {
   const f = document.createDocumentFragment();
   f.append(el('div', { class: 'note', id: 'expoNote' }));
+  f.append(el('div', { class: 'note', id: 'groupNote', hidden: true }));
   if (!state.items.length) f.append(el('p', { class: 'hint' }, t('noItems')));
   const ul = el('ul', { class: 'items' });
   state.items.forEach((item, i) => {
@@ -325,6 +327,14 @@ function paneSubject() {
     } else {
       f.append(select(t('look'), s.eth, LOOKS.map((k) => [k, t('look.' + k)]), rebuild((v) => { s.eth = v; })));
       f.append(select(t('age'), s.age, AGES.map((k) => [k, t('age.' + k)]), rebuild((v) => { s.age = v; })));
+      f.append(select(t('group'), String(groupSize(s)), [1, 2, 3, 4, 5].map((k) => [String(k), k === 1 ? t('group.one') : t('group.n', { n: k })]), rebuild((v) => {
+        s.group = +v; Object.assign(state.camera, groupCamera(s, camMax())); layout();
+      })));
+      if (groupSize(s) > 1) {
+        f.append(select(t('formation'), s.formation || 'row', FORMATIONS.map((k) => [k, t('formation.' + k)]), rebuild((v) => { s.formation = v; })));
+        f.append(slider(t('spacing'), s.spacing || 0.5, 0.38, 0.8, 0.02, fmtM, chg((v) => { s.spacing = v; })));
+        f.append(el('div', { class: 'note' }, t('groupNote')));
+      }
       f.append(select(t('pose'), s.pose || 'standing', [['standing', t('pose.standing')], ['seated', t('pose.seated')]], rebuild((v) => { s.pose = v; })));
       f.append(select(t('arms'), s.arms || 'down', ARM_POSES.map((k) => [k, t('arms.' + k)]), chg((v) => { s.arms = v; })));
       f.append(slider(t('smile'), s.smile || 0, 0, 100, 5, (v) => `${v}%`, chg((v) => { s.smile = v; })));
@@ -411,7 +421,7 @@ function renderSettled() { // resolves once the live view has refined the curren
 async function startChallenge(id) {
   if (!engine || challengeBusy) return;
   challengeBusy = true;
-  state.view = 'camera'; state.subject.type = 'portrait'; renderChrome(); layout();
+  state.view = 'camera'; state.subject.type = 'portrait'; state.subject.group = 1; renderChrome(); layout();
   const T = subjectTarget(state.subject), dy = T.y - PRESET_FACE_Y;
   const target = PRESETS[id].items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
   Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600, angle: 0, focal: 85, dist: 1.7, aspect: '4:5', height: T.y + 0.01, falseColor: false });
@@ -563,6 +573,23 @@ function updateReadouts() {
   let ratio = '';
   if (each.length >= 2 && each[1] > 0) { const r = each[0] / each[1]; ratio = ' ' + t('ratio', { r: r >= 10 ? Math.round(r) : num(r, 1), s: num(Math.log2(r), 1) }); }
   const note = $('expoNote'); if (note) note.textContent = `${t('meter')}: ${line}.${ratio}`;
+  // group: exposure at each face and the spread between the brightest and darkest person
+  const gn = $('groupNote');
+  if (gn) {
+    const people = state.subject.type === 'portrait' && state.subject.model !== 'scan' ? groupMembers(state.subject) : [];
+    gn.hidden = people.length < 2;
+    if (people.length > 1) {
+      const Hs = people.map((m) => {
+        let h = state.set.roomLux ? state.set.roomLux / cam.shutter : 0;
+        for (const item of state.items) { const r = meterLight(item, { x: m.x, y: m.faceY, z: m.z + 0.03 }, cam, state); if (r) h += r.H; }
+        return h;
+      });
+      const hi = Math.max(...Hs), lo = Math.min(...Hs), spread = lo > 0 ? Math.log2(hi / lo) : 99;
+      const each = Hs.map((h, i) => `${String.fromCharCode(65 + i)} ${h > 0 ? fmtF(Math.sqrt(h * cam.iso / 250)) : '—'}`).join(' · ');
+      gn.textContent = `${t('groupSpread', { s: spread > 20 ? '∞' : num(spread, 1) })} ${t(spread <= 0.34 ? 'groupEven' : spread <= 0.7 ? 'groupOk' : 'groupUneven')} ${each}`;
+      gn.classList.toggle('bad', spread > 0.7);
+    }
+  }
   const sync = anyFlash && cam.shutter > SYNC_SPEED;
   const sn = $('syncNote'); if (sn) sn.hidden = !sync;
   $('warn').hidden = !sync; if (sync) $('warn').textContent = t('syncWarn');

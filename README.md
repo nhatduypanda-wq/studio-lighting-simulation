@@ -39,6 +39,7 @@ python3 -m http.server 8080
 - **So sánh và ghi chép**: lưu ảnh A rồi bật/tắt để so với bố cục hiện tại; xuất sơ đồ ánh sáng PNG kèm danh sách thiết bị và thông số.
 - **Học**: tab Học có 9 bài ngắn (nghịch đảo bình phương, gắt/mềm, bốn kiểu sáng chân dung, tỉ lệ sáng, feathering, tách nền, nhiệt độ màu và gel, kim loại bóng, negative fill), mỗi bài dựng sẵn bố cục và gợi ý một thứ để thử; ngoài ra có 8 bố cục mẫu.
 - **Bổ sung giai đoạn 6**: bố cục broad, short, high-key, low-key, bright-field, dark-field, tent lighting; kính mắt; chủ thể đồng hồ, nhẫn, mỹ phẩm, trái cây, bảng màu; đèn phòng (kéo tốc để cân bằng flash với nền), đèn cửa sổ, đèn modeling; lưu nhiều bố cục có tên và chia sẻ qua link; ba cỡ phòng, bốn loại sàn, phông muslin/vinyl/không phông; chân đèn thường, tay boom hoặc treo trần; lều chụp sản phẩm; cucoloris; phóng to mắt xem catchlight; hiển thị family of angles trên sơ đồ; tư thế tay (buông, chống hông, đan tay trước).
+- **Chụp nhóm** (giai đoạn 7): 2–5 người, đội hình một hàng, vòng cung hoặc hai hàng (hàng trước ngồi); chỉnh khoảng cách giữa người; máy ảnh tự lùi cho vừa khung. Tab Đèn hiển thị độ sáng tại từng khuôn mặt và độ chênh giữa mặt sáng nhất với tối nhất. Hai bố cục mẫu cho nhóm và ba bài học: phủ sáng đều, bóng đổ lên người bên cạnh, độ sâu trường ảnh khi xếp hai hàng.
 - **Thử thách**: app chiếu sáng một chân dung bằng bố cục ẩn, bạn dựng lại ánh sáng từ ảnh mẫu rồi bấm chấm điểm (so ảnh thu nhỏ, thang 100); có thể xem và áp đáp án.
 
 ## Mô hình ánh sáng / Lighting model

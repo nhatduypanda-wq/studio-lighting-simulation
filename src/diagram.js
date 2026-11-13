@@ -1,5 +1,5 @@
 // Top-down lighting diagram: shows the set and lets the user drag lights and the camera.
-import { PANELS, PANEL_SURFACES, LIGHT_TYPES, ASPECTS, modSpec, lightDir, subjectTarget, cameraPose, sensorSize, lightTint, BACKDROP_W, ROOM } from './data.js';
+import { PANELS, PANEL_SURFACES, LIGHT_TYPES, ASPECTS, modSpec, lightDir, subjectTarget, cameraPose, sensorSize, lightTint, BACKDROP_W, ROOM, groupMembers } from './data.js';
 
 // Visible region of the diagram: the medium room is cropped around the working area,
 // other sizes are shown whole.
@@ -117,13 +117,17 @@ export class Diagram {
 
     // subject
     if (st.subject.type === 'portrait') {
-      const yaw = (st.subject.yaw || 0) * Math.PI / 180;
-      g.save(); g.translate(this.X(0), this.Z(0));
-      g.fillStyle = '#3b3d42'; g.beginPath(); g.ellipse(0, 0, 0.22 * s, 0.11 * s, -yaw * 0.35, 0, 7); g.fill();
-      g.rotate(-yaw);
-      g.fillStyle = '#d9b9a3'; g.beginPath(); g.ellipse(0, 0, 0.085 * s, 0.1 * s, 0, 0, 7); g.fill();
-      g.beginPath(); g.moveTo(-0.025 * s, 0.09 * s); g.lineTo(0, 0.135 * s); g.lineTo(0.025 * s, 0.09 * s); g.fill();
-      g.restore();
+      const people = st.subject.model === 'scan' ? [{ x: 0, z: 0, state: st.subject }] : groupMembers(st.subject);
+      people.forEach((m, i) => {
+        const yaw = (m.state.yaw || 0) * Math.PI / 180;
+        g.save(); g.translate(this.X(m.x), this.Z(m.z));
+        g.fillStyle = '#3b3d42'; g.beginPath(); g.ellipse(0, 0, 0.22 * s, 0.11 * s, -yaw * 0.35, 0, 7); g.fill();
+        g.rotate(-yaw);
+        g.fillStyle = '#d9b9a3'; g.beginPath(); g.ellipse(0, 0, 0.085 * s, 0.1 * s, 0, 0, 7); g.fill();
+        g.beginPath(); g.moveTo(-0.025 * s, 0.09 * s); g.lineTo(0, 0.135 * s); g.lineTo(0.025 * s, 0.09 * s); g.fill();
+        g.restore();
+        if (people.length > 1) this._label(String.fromCharCode(65 + i), this.X(m.x), this.Z(m.z) - 0.2 * s - 4, '#cfcfcf');
+      });
     } else {
       g.fillStyle = '#3b3d42'; g.fillRect(this.X(-0.65), this.Z(-0.4), 1.3 * s, 0.8 * s);
       g.fillStyle = '#d9d9d9'; g.beginPath(); g.arc(this.X(0), this.Z(0), 0.07 * s + 2, 0, 7); g.fill();

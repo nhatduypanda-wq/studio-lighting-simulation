@@ -111,7 +111,7 @@ export function defaultState() {
   const st = {
     v: 1,
     view: 'camera',
-    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, pose: 'standing', arms: 'down', smile: 0, glasses: false, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
+    subject: { type: 'portrait', model: 'female', eth: 'asi', age: 'young', hair: 'long01', hairColor: 'black', eyes: 'brown', clothes: 'charcoal', skin: 'light', yaw: 0, pitch: 0, tilt: 0, pose: 'standing', group: 1, formation: 'row', spacing: 0.5, arms: 'down', smile: 0, glasses: false, rot: 0, table: 'white', mat: 'cotton', shape: 'ball' },
     set: { backdrop: 'gray', backdropColor: BACKDROPS.gray, backDist: 2.0, walls: 'gray', kind: 'paper', roomLux: 0, roomK: 3000, room: 'medium', floor: 'concrete' },
     camera: { focal: 85, aperture: 8, shutter: 160, iso: 100, wb: 5600, dist: 2.1, height: 1.57, angle: 0, aspect: '4:5', clip: false, autoAvoid: true },
     items: PRESETS.rembrandt.items(),
@@ -202,6 +202,16 @@ export const PRESETS = {
     items: () => [makeLight({ mod: 'octa', ...P(-85, 0.75), h: 1.75, stops: -4.3 }), makeLight({ mod: 'octa', ...P(85, 0.75), h: 1.75, stops: -4.3 }),
       makePanel({ size: 'disc110', surface: 'white', ...P(0, 0.75), h: 2.35 })],
     subject: { type: 'shaker', table: 'white', rot: 0 }, set: { walls: 'white', backdrop: 'white', backdropColor: BACKDROPS.white },
+  },
+  // Groups: even light matters more than modelling. Two equal lights either side of the
+  // camera, or one large source high and close to the camera axis and well back.
+  groupEven: {
+    items: () => [makeLight({ mod: 'umb_shoot', ...P(-40, 2.6), h: 2.3, stops: -1 }), makeLight({ mod: 'umb_shoot', ...P(40, 2.6), h: 2.3, stops: -1 })],
+    subject: { group: 4, formation: 'row', pose: 'standing', arms: 'down' }, set: { walls: 'gray', kind: 'cyc' },
+  },
+  groupSingle: {
+    items: () => [makeLight({ mod: 'octa', ...P(-12, 3.0), h: 2.55, stops: -0.3 })],
+    subject: { group: 4, formation: 'arc', pose: 'standing', arms: 'down' }, set: { walls: 'white', kind: 'cyc' },
   },
   continuous: {
     items: () => [
@@ -310,11 +320,55 @@ export function meterLight(item, target, cam, state) {
   return { H, N, ev: N > 0 ? 2 * Math.log2(N / cam.aperture) : -Infinity, d };
 }
 
+// ---- groups ---------------------------------------------------------------------
+// The first person is the one configured in the Subject tab; the others are fixed
+// companions chosen to differ in height, skin and hair so uneven light is easy to see.
+const COMPANIONS = [
+  { model: 'male', eth: 'cau', age: 'young', hair: 'short02', hairColor: 'brown', eyes: 'green', clothes: 'navy' },
+  { model: 'female', eth: 'afr', age: 'young', hair: 'ponytail01', hairColor: 'black', eyes: 'brown', clothes: 'beige' },
+  { model: 'male', eth: 'asi', age: 'old', hair: 'short04', hairColor: 'grey', eyes: 'brown', clothes: 'charcoal' },
+  { model: 'female', eth: 'cau', age: 'old', hair: 'short03', hairColor: 'white', eyes: 'blue', clothes: 'red' },
+];
+export const FORMATIONS = ['row', 'arc', 'rows'];
+export const groupSize = (subject) => (subject.type === 'portrait' && subject.model !== 'scan' ? Math.max(1, Math.min(5, subject.group || 1)) : 1);
+
+// Everyone in the frame: their own subject settings, where they stand and the height of the face.
+export function groupMembers(subject) {
+  const n = groupSize(subject), sp = subject.spacing || 0.5, form = subject.formation || 'row';
+  let slots = [];
+  if (n > 1 && form === 'rows') {
+    const back = Math.ceil(n / 2), front = n - back;
+    for (let i = 0; i < back; i++) slots.push({ x: (i - (back - 1) / 2) * sp, z: -0.32, seated: false });
+    for (let i = 0; i < front; i++) slots.push({ x: (i - (front - 1) / 2) * sp, z: 0.3, seated: true });
+  } else {
+    for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * sp; slots.push({ x, z: form === 'arc' && n > 1 ? 0.5 * x * x : 0 }); }
+    slots.sort((a, b) => Math.abs(a.x) - Math.abs(b.x)); // the main person takes the middle
+  }
+  const keys = new Set();
+  return slots.map((slot, i) => {
+    const st = i === 0 ? { ...subject } : { ...subject, ...COMPANIONS[i - 1] };
+    if (keys.has(modelKey(st))) st.age = st.age === 'young' ? 'old' : 'young'; // each person needs their own mesh
+    keys.add(modelKey(st));
+    if (n > 1) { st.yaw = (subject.yaw || 0) - slot.x * 22; if (slot.seated !== undefined) st.pose = slot.seated ? 'seated' : 'standing'; }
+    const m = modelMeta(st);
+    return { state: st, x: slot.x, z: slot.z, faceY: m.eyeY - 0.035 - (st.pose === 'seated' ? m.seatDrop : 0) };
+  });
+}
+// Camera framing that fits the whole group (or a single head-and-shoulders portrait).
+export function groupCamera(subject, maxDist = 4.5) {
+  const ms = groupMembers(subject);
+  if (ms.length === 1) return { focal: 85, dist: 2.1, aspect: '4:5' };
+  const width = Math.max(...ms.map((m) => m.x)) - Math.min(...ms.map((m) => m.x)) + 0.9;
+  let focal = 50, dist = Math.max(2.4, width * focal / 36);
+  if (dist > maxDist) { focal = 35; dist = Math.min(maxDist, Math.max(2.2, width * focal / 36)); }
+  return { focal, dist: Math.round(dist * 20) / 20, aspect: '3:2' };
+}
+
 export function subjectTarget(subject) {
   if (subject.type === 'portrait') {
     if (subject.model === 'scan') return { x: 0, y: 1.57, z: 0 };
-    const m = modelMeta(subject);
-    return { x: 0, y: m.eyeY - 0.035 - (subject.pose === 'seated' ? m.seatDrop : 0), z: 0.03 };
+    const ms = groupMembers(subject);
+    return { x: 0, y: ms.reduce((a, m) => a + m.faceY, 0) / ms.length, z: ms.reduce((a, m) => a + m.z, 0) / ms.length + 0.03 };
   }
   return { x: 0, y: PRODUCT_Y[subject.type] ?? 1.05, z: 0 };
 }
@@ -363,8 +417,10 @@ export function blocksSubject(item, state) {
   }
   const portrait = state.subject.type === 'portrait';
   const pts = portrait ? [0.14, 0, -0.3, -0.6] : [0.12, 0, -0.1];
-  for (const dy of pts) {
-    const s = segDist(c, cam, { x: T.x, y: T.y + dy, z: T.z });
+  // every face in a group must stay visible
+  const heads = portrait && state.subject.model !== 'scan' ? groupMembers(state.subject).map((m) => ({ x: m.x, y: m.faceY, z: m.z })) : [T];
+  for (const h of heads) for (const dy of pts) {
+    const s = segDist(c, cam, { x: h.x, y: h.y + dy, z: h.z });
     if (s.t > 0.03 && s.t < 0.97 && s.d < r) return true;
   }
   return false;
