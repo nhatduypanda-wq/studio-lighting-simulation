@@ -23,6 +23,12 @@ Ghi chú kỹ thuật:
 - Tư thế: thân và quần áo có `_seatpos/_seatnrm` (float) và `_arm_<pose>_p/_n` (offset nén int16/int8); app cộng offset trên CPU (models.js, `apply`).
 - Đèn phòng chưa có trong chế độ chất lượng cao (path tracer không có ambient light).
 
-## Việc tiếp theo (chờ người dùng duyệt)
-- Cần người dùng xác nhận trên thiết bị thật: tốc độ trên iPhone/iPad, chế độ chất lượng cao có chạy được không, app có tự cập nhật từ bản 5.1 trở đi không.
-- Ý tưởng thêm: nhiều biểu cảm (nhắm mắt, nhướng mày), mẫu trẻ em, thử thách cho sản phẩm, đèn phòng trong chế độ chất lượng cao.
+## Giai đoạn 7 — chụp nhóm 2–5 người (đang làm, nhánh `phase-7`)
+
+- [ ] 7a. data.js `groupMembers(subject)`: thành viên, vị trí (hàng ngang / vòng cung / hai hàng), độ cao mặt; `subjectTarget` lấy tâm nhóm
+- [ ] 7b. models.js `buildGroup`: nhiều `buildModel`, mỗi người một mẫu khác nhau (khóa mẫu không trùng để tư thế không đè nhau)
+- [ ] 7c. Đo sáng từng người + độ chênh sáng trong nhóm (main.js updateReadouts); sơ đồ vẽ từng người; tránh che áp cho mọi khuôn mặt
+- [ ] 7d. Giao diện: số người, đội hình, khoảng cách; máy ảnh tự lùi cho vừa khung
+- [ ] 7e. Bố cục mẫu và bài học chụp nhóm (phủ sáng đều, bóng đổ chéo, độ sâu trường ảnh hai hàng)
+- [ ] 7f. Kiểm tra, README, gộp vào main
+
