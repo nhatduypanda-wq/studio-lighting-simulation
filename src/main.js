@@ -1,7 +1,7 @@
 import { t, getLang, setLang } from './i18n.js';
 import {
   LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
-  FORMATIONS, groupMembers, groupSize, groupCamera, ARM_POSES, GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, ROOM, ROOMS, FLOORS, MOUNTS, setRoom, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
+  FORMATIONS, groupMembers, groupSize, groupCamera, ARM_POSES, GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, ROOM, ROOMS, FLOORS, MOUNTS, setRoom, setBackdrop, meterBackdrop, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
   APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
   defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA, avoidCamera,
 } from './data.js';
@@ -11,13 +11,13 @@ import { LESSONS, applyLesson } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '7.0';
+const APP_VERSION = '7.1';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
 
 let state = load();
-setRoom(state.set.room);
+setRoom(state.set.room); setBackdrop(state.set);
 let tab = 'lights';
 let engine = null;
 
@@ -61,7 +61,7 @@ function saveSetup() {
 function loadSetup(entry) {
   const st = normalize(entry.state); if (!st) return;
   st.preset = 'custom'; st.selected = st.items[0]?.id ?? null;
-  state = st; setRoom(state.set.room); renderChrome(); layout(); commit({ rebuild: true });
+  state = st; setRoom(state.set.room); setBackdrop(state.set); renderChrome(); layout(); commit({ rebuild: true });
 }
 async function shareSetup() {
   const url = location.origin + location.pathname + '#s=' + encodeState(state);
@@ -209,6 +209,7 @@ function paneLights() {
   const f = document.createDocumentFragment();
   f.append(el('div', { class: 'note', id: 'expoNote' }));
   f.append(el('div', { class: 'note', id: 'groupNote', hidden: true }));
+  f.append(el('div', { class: 'note', id: 'bgNote', hidden: true }));
   if (!state.items.length) f.append(el('p', { class: 'hint' }, t('noItems')));
   const ul = el('ul', { class: 'items' });
   state.items.forEach((item, i) => {
@@ -223,6 +224,10 @@ function paneLights() {
     const T = subjectTarget(state.subject);
     const side = lightCount() % 2 ? 1 : -1;
     const it = makeLight({ x: side * 1.1, z: 1.1, h: T.y + 0.45, stops: -3 });
+    state.items.push(it); state.selected = it.id; touched(); commit({ rebuild: true });
+  }));
+  if (lightCount() < MAX_LIGHTS && state.set.kind !== 'none') add.append(button('+ ' + t('addBgLight'), '', () => {
+    const it = makeLight({ mod: 'standard', x: 0.2, z: Math.round(-state.set.backDist * 50) / 100, h: 0.6, stops: -5, aim: 'bg' });
     state.items.push(it); state.selected = it.id; touched(); commit({ rebuild: true });
   }));
   add.append(button('+ ' + t('addPanel'), '', () => {
@@ -266,6 +271,7 @@ function paneLights() {
   ed.append(slider(t('angle'), p.a, -180, 180, 1, fmtDeg, chg((v) => { setPolar(item, Math.max(0.3, polar(item).d), v); })));
   if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(slider(t('height'), Math.min(item.h, ROOM.h - 0.2), 0.2, Math.round((ROOM.h - 0.2) * 20) / 20, 0.05, fmtM, chg((v) => { item.h = v; })));
   if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(select(t('mount'), item.mount || 'auto', MOUNTS.map((k) => [k, t('mount.' + k)]), chg((v) => { item.mount = v; })));
+  if (item.kind === 'light') ed.append(select(t('aim'), item.aim === 'bg' ? 'bg' : 'subject', [['subject', t('aim.subject')], ['bg', t('aim.bg')]], chg((v) => { item.aim = v; })));
   if (item.kind === 'light') ed.append(slider(t('feather'), item.feather || 0, -180, 180, 1, fmtDeg, chg((v) => { item.feather = v; })));
   ed.append(el('div', { class: 'btns' },
     button(t('duplicate'), '', () => {
@@ -377,6 +383,7 @@ function paneSet() {
   f.append(select(t('bdKind'), s.kind || 'paper', BACKDROP_TYPES.map((k) => [k, t('bdKind.' + k)]), (v) => { s.kind = v; commit(); }));
   f.append(select(t('room'), s.room || 'medium', Object.keys(ROOMS).map((k) => [k, t('room.' + k)]), (v) => { s.room = v; setRoom(v); fitRoom(); commit({ rebuild: true }); }));
   f.append(select(t('floor'), s.floor || 'concrete', FLOORS.map((k) => [k, t('floor.' + k)]), (v) => { s.floor = v; commit(); }));
+  f.append(el('div', { class: 'note', id: 'bgNote', hidden: true }));
   f.append(slider(t('backDist'), Math.min(s.backDist, backMax()), 0.4, backMax(), 0.05, fmtM, (v) => { s.backDist = v; commit(); }));
   f.append(select(t('roomLux'), String(s.roomLux || 0), ROOM_LIGHT.levels.map((k) => [String(k), k ? `${k} lux` : t('roomOff')]), (v) => { s.roomLux = +v; commit({ rebuild: true }); }));
   if (s.roomLux) f.append(select(t('roomK'), String(s.roomK || 3000), ROOM_LIGHT.kelvins.map((k) => [String(k), `${k} K`]), (v) => { s.roomK = +v; commit(); }));
@@ -588,6 +595,24 @@ function updateReadouts() {
       const each = Hs.map((h, i) => `${String.fromCharCode(65 + i)} ${h > 0 ? fmtF(Math.sqrt(h * cam.iso / 250)) : '—'}`).join(' · ');
       gn.textContent = `${t('groupSpread', { s: spread > 20 ? '∞' : num(spread, 1) })} ${t(spread <= 0.34 ? 'groupEven' : spread <= 0.7 ? 'groupOk' : 'groupUneven')} ${each}`;
       gn.classList.toggle('bad', spread > 0.7);
+    }
+  }
+  // backdrop: exposure behind the subject, compared with the face, and its evenness
+  const bn = $('bgNote');
+  if (bn) {
+    setBackdrop(state.set);
+    const b = meterBackdrop(state);
+    bn.hidden = !b;
+    if (b) {
+      const sg = (v) => (Math.abs(v) > 20 ? (v > 0 ? '+∞' : '−∞') : (v >= 0 ? '+' : '−') + num(Math.abs(v), 1));
+      if (b.N < 0.5) bn.textContent = t('bgNone');
+      else {
+        const tone = b.lin >= 1 ? 'clip' : b.pct >= 80 ? 'bright' : b.pct >= 58 ? 'light' : b.pct >= 35 ? 'mid' : b.pct >= 15 ? 'dark' : 'black';
+        const uneven = Math.max(Math.abs(b.left), Math.abs(b.right)) > 0.5;
+        bn.textContent = t('bgMeter', { f: fmtF(b.N), d: sg(b.vsFace), tone: t('bgT.' + tone), p: b.pct }) + ' ' + t('bgSides', { l: sg(b.left), r: sg(b.right) })
+          + (uneven ? ' ' + t('bgUneven') : '') + (b.rho > 0.4 && b.lin >= 2.2 ? ' ' + t('bgWrap') : '');
+      }
+      bn.classList.toggle('bad', b.N >= 0.5 && b.rho > 0.4 && b.lin >= 2.2);
     }
   }
   const sync = anyFlash && cam.shutter > SYNC_SPEED;

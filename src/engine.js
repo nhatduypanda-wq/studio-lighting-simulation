@@ -3,7 +3,7 @@
 // subject: one with the lamp faces (specular reflections) and one without (bounce light).
 import * as THREE from 'three';
 import { OrbitControls } from '../vendor/OrbitControls.js';
-import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightColor, MODELING, lightDir, scrimFor, setRoom, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
+import { LIGHT_TYPES, ASPECTS, axisIntensity, exposureScale, lightTint, lightColor, MODELING, lightDir, scrimFor, setRoom, setBackdrop, subjectTarget, cameraPose, sensorSize, WALLS } from './data.js';
 import { envDiffuse, buildRoom, buildBackdrop, buildLightRig, buildPanelRig, buildCameraRig, buildSubject, subjectSig, disposeTree, setAssetCallback, goboTexture, buildTent } from './models.js';
 
 // --- shader patches (must run before any material compiles) ---
@@ -211,7 +211,7 @@ export class Engine {
   // Apply the whole app state to the scene.
   sync(state, env = true) {
     this.state = state;
-    setRoom(state.set.room);
+    setRoom(state.set.room); setBackdrop(state.set);
     this.room.update(state.set.floor);
     const T = subjectTarget(state.subject);
     this.target.set(T.x, T.y, T.z);

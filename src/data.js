@@ -10,6 +10,9 @@ export const ROOMS = {
 // The current room. It is one shared object so every module sees a change of size.
 export const ROOM = { ...ROOMS.medium };
 export function setRoom(id) { Object.assign(ROOM, ROOMS[id] || ROOMS.medium); }
+// Where the backdrop stands (shared like ROOM): lamps set to aim at the backdrop need it.
+export const BG = { z: -2 };
+export function setBackdrop(set) { BG.z = -(set && set.backDist || 2); }
 export const FLOORS = ['concrete', 'wood', 'white', 'gloss'];
 export const MOUNTS = ['auto', 'floor', 'boom', 'ceiling'];
 
@@ -178,8 +181,8 @@ export const PRESETS = {
     items: () => [
       makeLight({ mod: 'octa', ...P(-20, 1.6), h: 2.0, stops: -2.3 }),
       makeLight({ mod: 'umb_shoot', ...P(25, 2.0), h: 1.7, stops: -3 }),
-      makeLight({ mod: 'umb_silver', x: -1.2, z: -0.7, h: 1.5, stops: -2, feather: 103 }),
-      makeLight({ mod: 'umb_silver', x: 1.2, z: -0.7, h: 1.5, stops: -2, feather: -103 }),
+      makeLight({ mod: 'umb_silver', x: -1.3, z: -0.6, h: 1.5, stops: -2, aim: 'bg' }),
+      makeLight({ mod: 'umb_silver', x: 1.3, z: -0.6, h: 1.5, stops: -2, aim: 'bg' }),
     ],
     set: { backdrop: 'white', backdropColor: BACKDROPS.white, backDist: 1.8, walls: 'white' },
   },
@@ -287,6 +290,7 @@ export function smoothstep(a, b, x) {
 
 // Unit vector from the light towards its aim point (subject, rotated by feather).
 export function lightDir(item, target) {
+  if (item.aim === 'bg') target = { x: 0, y: target.y - 0.1, z: BG.z };
   let dx = target.x - item.x, dy = target.y - item.h, dz = target.z - item.z;
   const f = (item.feather || 0) * Math.PI / 180;
   if (f) { const c = Math.cos(f), s = Math.sin(f); const nx = dx * c + dz * s; dz = -dx * s + dz * c; dx = nx; }
@@ -307,7 +311,7 @@ export function meterLight(item, target, cam, state) {
     return { H, N, ev: N > 0 ? 2 * Math.log2(N / cam.aperture) : -Infinity, d, scrim: true };
   }
   const m = modSpec(item), lt = LIGHT_TYPES[item.type];
-  const dir = lightDir(item, target);
+  const dir = lightDir(item, state ? subjectTarget(state.subject) : target);
   const tx = target.x - item.x, ty = target.y - item.h, tz = target.z - item.z;
   const d = Math.hypot(tx, ty, tz) || 1e-3;
   const cosT = (tx * dir.x + ty * dir.y + tz * dir.z) / d;
@@ -329,6 +333,43 @@ const COMPANIONS = [
   { model: 'male', eth: 'asi', age: 'old', hair: 'short04', hairColor: 'grey', eyes: 'brown', clothes: 'charcoal' },
   { model: 'female', eth: 'cau', age: 'old', hair: 'short03', hairColor: 'white', eyes: 'blue', clothes: 'red' },
 ];
+// ---- backdrop metering -----------------------------------------------------------
+// Light arriving on the backdrop at three points across the frame (centre, left, right),
+// compared with the light on the face, and the tone the paper will have in the picture.
+// Direct light only: the subject's own shadow and bounce from the room are not included.
+const srgbLin = (v) => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+export function hexLuminance(hex) {
+  const n = parseInt(String(hex).replace('#', ''), 16) || 0;
+  return 0.2126 * srgbLin((n >> 16 & 255) / 255) + 0.7152 * srgbLin((n >> 8 & 255) / 255) + 0.0722 * srgbLin((n & 255) / 255);
+}
+export function meterBackdrop(state) {
+  const set = state.set, cam = state.camera;
+  if (set.kind === 'none') return null;
+  const T = subjectTarget(state.subject), C = cameraPose(cam, T), bz = -set.backDist;
+  const k = (C.z - bz) / Math.max(0.1, C.z - T.z);
+  const cx = C.x + (T.x - C.x) * k, y = Math.max(0.3, C.y + (T.y - C.y) * k);
+  const sens = sensorSize(ASPECTS[cam.aspect] || 0.8);
+  const edge = (set.kind === 'cyc' ? ROOM.w : BACKDROP_W) / 2 - 0.05;
+  const half = Math.min(edge, 0.8 * (C.z - bz) * sens.w / (2 * cam.focal));
+  const at = (x) => {
+    const pt = { x: Math.max(-edge, Math.min(edge, x)), y, z: bz };
+    let H = set.roomLux ? set.roomLux / cam.shutter : 0;
+    for (const item of state.items) {
+      const m = meterLight(item, pt, cam, state);
+      if (!m || item.z <= bz) continue;
+      H += m.H * (item.z - bz) / Math.hypot(item.x - pt.x, item.h - pt.y, item.z - bz);
+    }
+    return H;
+  };
+  let face = set.roomLux ? set.roomLux / cam.shutter : 0;
+  for (const item of state.items) { const m = meterLight(item, T, cam, state); if (m) face += m.H; }
+  const c = at(cx), l = at(cx - half), r = at(cx + half);
+  const N = Math.sqrt(c * cam.iso / 250), rho = hexLuminance(set.backdropColor);
+  const lin = rho * c * cam.iso / (250 * cam.aperture * cam.aperture);
+  const st = (a, b) => (a > 0 && b > 0 ? Math.log2(a / b) : a > 0 ? 99 : -99);
+  return { H: c, N, vsFace: st(c, face), left: st(l, c), right: st(r, c), lin, rho, pct: Math.round(100 * Math.pow(Math.min(1, lin), 1 / 2.2)) };
+}
+
 export const FORMATIONS = ['row', 'arc', 'rows'];
 export const groupSize = (subject) => (subject.type === 'portrait' && subject.model !== 'scan' ? Math.max(1, Math.min(5, subject.group || 1)) : 1);
 

@@ -29,6 +29,13 @@ Ghi chú kỹ thuật:
 - Người A là người chỉnh ở tab Chủ thể; B–E là mẫu cố định (COMPANIONS). Khóa mẫu không trùng nhau vì tư thế được ghi vào geometry dùng chung.
 - Đo sáng từng người không tính bóng đổ của người này lên người kia (chỉ tính khoảng cách và góc đèn).
 
+## Giai đoạn 8 — ánh sáng trên phông nền: XONG, phiên bản 7.1
+
+- `meterBackdrop()` (data.js): đo sáng trực tiếp tại ba điểm trên phông (giữa, hai mép khung), so với mặt, dự đoán sắc độ. Không tính bóng chủ thể và ánh sáng dội.
+- Đèn có `aim: 'bg'` (chĩa vào phông; `BG.z` cập nhật qua `setBackdrop`). Nút "Thêm đèn phông". Bố cục high-key dùng `aim: 'bg'`.
+- `meterLight` nay lấy hướng đèn theo chủ thể thật (trước đây coi như đèn chĩa vào điểm đo).
+- Năm bài học: bgTone, bgWhite, bgSpot, bgGel, bgShadow.
+
 ## Việc tiếp theo (chờ người dùng duyệt)
 - Cần người dùng xác nhận trên thiết bị thật: tốc độ trên iPhone/iPad (nhất là nhóm 4–5 người), chế độ chất lượng cao, tự cập nhật.
 - Ý tưởng thêm: chỉnh riêng từng người trong nhóm, nhóm trên 5 người, thử thách cho nhóm và sản phẩm.
