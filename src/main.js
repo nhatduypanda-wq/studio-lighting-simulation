@@ -15,11 +15,22 @@ import { GEAR_TYPES, GEAR_MODS, defaultGear, missing, adapt } from './gear.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.3';
+const APP_VERSION = '8.4';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
 
+// Simple mode hides the advanced controls; people opening the app for the first time start in it.
+const MODE_STORE = 'sl.mode.v1';
+let simple = (() => { try { const m = localStorage.getItem(MODE_STORE); return m ? m === 'simple' : localStorage.getItem(STORE) === null; } catch { return false; } })();
+document.body.classList.toggle('simple', simple);
+const adv = (node) => { node.classList.add('adv'); return node; };
+function setSimple(v) {
+  simple = v; document.body.classList.toggle('simple', v);
+  try { localStorage.setItem(MODE_STORE, v ? 'simple' : 'full'); } catch { /* private mode */ }
+  if (v) Object.assign(state.camera, { falseColor: false, eyeZoom: false, clip: false });
+  commit({ rebuild: true });
+}
 let state = load();
 setRoom(state.set.room); setBackdrop(state.set);
 let tab = 'lights';
@@ -138,6 +149,7 @@ let coach = null;
 const LESSON_STORE = 'sl.lessons.v1';
 const lessonsDone = new Set((() => { try { return JSON.parse(localStorage.getItem(LESSON_STORE)) || []; } catch { return []; } })());
 function startLesson(ls) {
+  if (simple && ['feather', 'colour'].includes(ls.id)) setSimple(false); // these lessons use advanced controls
   leaveHome(); applyLesson(state, ls); coach = startCoach(state, ls);
   $('preset').value = 'custom'; layout(); setTab('lights'); commit({ rebuild: true }); renderCoach();
 }
@@ -253,7 +265,7 @@ function paneLights() {
   const f = document.createDocumentFragment();
   f.append(el('div', { class: 'note', id: 'expoNote' }));
   f.append(el('div', { class: 'note', id: 'groupNote', hidden: true }));
-  f.append(el('div', { class: 'note', id: 'bgNote', hidden: true }));
+  f.append(adv(el('div', { class: 'note', id: 'bgNote', hidden: true })));
   critSig = null; f.append(el('div', { class: 'crit', id: 'critBox' }));
   if (!state.items.length) f.append(el('p', { class: 'hint' }, t('noItems')));
   const ul = el('ul', { class: 'items' });
@@ -271,17 +283,17 @@ function paneLights() {
     const it = makeLight({ x: side * 1.1, z: 1.1, h: T.y + 0.45, stops: -3 });
     state.items.push(it); state.selected = it.id; touched(); commit({ rebuild: true });
   }));
-  if (lightCount() < MAX_LIGHTS && state.set.kind !== 'none') add.append(button('+ ' + t('addBgLight'), '', () => {
+  if (lightCount() < MAX_LIGHTS && state.set.kind !== 'none') add.append(adv(button('+ ' + t('addBgLight'), '', () => {
     const it = makeLight({ mod: 'standard', x: 0.2, z: Math.round(-state.set.backDist * 50) / 100, h: 0.6, stops: -5, aim: 'bg' });
     state.items.push(it); state.selected = it.id; touched(); commit({ rebuild: true });
-  }));
+  })));
   add.append(button('+ ' + t('addPanel'), '', () => {
     const T = subjectTarget(state.subject);
     const it = makePanel({ x: 0.85, z: 0.3, h: T.y - 0.2 });
     state.items.push(it); state.selected = it.id; touched(); commit({ rebuild: true });
   }));
   f.append(add);
-  f.append(el('div', { class: 'btns' }, button(t('exportDiagram'), '', exportDiagram)));
+  f.append(adv(el('div', { class: 'btns' }, button(t('exportDiagram'), '', exportDiagram))));
 
   const item = selected();
   if (!item) { f.append(el('p', { class: 'hint' }, t('selectHint'))); return f; }
@@ -302,10 +314,10 @@ function paneLights() {
     if (lt.mods.length > 1) ed.append(select(t('modifier'), modSpec(item).id, lt.mods.map((k) => [k, t('mod.' + k)]), chg((v) => { item.mod = v; if (!MODIFIERS[v].grid) item.grid = false; }, { rebuild: true })));
     if (modSpec(item).hasGrid) ed.append(check(t('grid'), item.grid, chg((v) => { item.grid = v; })));
     ed.append(slider(t('power'), item.stops, lt.flash ? -8 : -5, 0, 1 / 3, (v) => fmtPower({ ...item, stops: v }), chg((v) => { item.stops = Math.round(v * 3) / 3; })));
-    if (!lt.flash) ed.append(slider(t('kelvin'), item.kelvin, 2700, 6500, 100, (v) => `${v} K`, chg((v) => { item.kelvin = v; })));
-    if (item.type === 'strobe') ed.append(check(t('modeling'), item.modeling, chg((v) => { item.modeling = v; })));
-    ed.append(select(t('gel'), item.gel || 'none', Object.keys(GELS).map((k) => [k, t('gel.' + k)]), chg((v) => { item.gel = v; })));
-    if (modSpec(item).id === 'optical') ed.append(select(t('gobo'), item.gobo || 'none', GOBOS.map((k) => [k, t('gobo.' + k)]), chg((v) => { item.gobo = v; })));
+    if (!lt.flash) ed.append(adv(slider(t('kelvin'), item.kelvin, 2700, 6500, 100, (v) => `${v} K`, chg((v) => { item.kelvin = v; }))));
+    if (item.type === 'strobe') ed.append(adv(check(t('modeling'), item.modeling, chg((v) => { item.modeling = v; }))));
+    ed.append(adv(select(t('gel'), item.gel || 'none', Object.keys(GELS).map((k) => [k, t('gel.' + k)]), chg((v) => { item.gel = v; }))));
+    if (modSpec(item).id === 'optical') ed.append(adv(select(t('gobo'), item.gobo || 'none', GOBOS.map((k) => [k, t('gobo.' + k)]), chg((v) => { item.gobo = v; }))));
   } else {
     ed.append(check(t('on'), item.on !== false, chg((v) => { item.on = v; }, { rebuild: true })));
     ed.append(select(t('surface'), item.surface, Object.keys(PANEL_SURFACES).map((k) => [k, t('surface.' + k)]), chg((v) => { item.surface = v; }, { rebuild: true })));
@@ -315,9 +327,9 @@ function paneLights() {
   ed.append(slider(t('distance'), Math.min(4.5, p.d), 0.3, 4.5, 0.05, fmtM, chg((v) => { setPolar(item, v, polar(item).a); })));
   ed.append(slider(t('angle'), p.a, -180, 180, 1, fmtDeg, chg((v) => { setPolar(item, Math.max(0.3, polar(item).d), v); })));
   if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(slider(t('height'), Math.min(item.h, ROOM.h - 0.2), 0.2, Math.round((ROOM.h - 0.2) * 20) / 20, 0.05, fmtM, chg((v) => { item.h = v; })));
-  if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(select(t('mount'), item.mount || 'auto', MOUNTS.map((k) => [k, t('mount.' + k)]), chg((v) => { item.mount = v; })));
-  if (item.kind === 'light') ed.append(select(t('aim'), item.aim === 'bg' ? 'bg' : 'subject', [['subject', t('aim.subject')], ['bg', t('aim.bg')]], chg((v) => { item.aim = v; })));
-  if (item.kind === 'light') ed.append(slider(t('feather'), item.feather || 0, -180, 180, 1, fmtDeg, chg((v) => { item.feather = v; })));
+  if (!(item.kind === 'panel' && item.size === 'vflat')) ed.append(adv(select(t('mount'), item.mount || 'auto', MOUNTS.map((k) => [k, t('mount.' + k)]), chg((v) => { item.mount = v; }))));
+  if (item.kind === 'light') ed.append(adv(select(t('aim'), item.aim === 'bg' ? 'bg' : 'subject', [['subject', t('aim.subject')], ['bg', t('aim.bg')]], chg((v) => { item.aim = v; }))));
+  if (item.kind === 'light') ed.append(adv(slider(t('feather'), item.feather || 0, -180, 180, 1, fmtDeg, chg((v) => { item.feather = v; }))));
   ed.append(el('div', { class: 'btns' },
     button(t('duplicate'), '', () => {
       if (item.kind === 'light' && lightCount() >= MAX_LIGHTS) return;
@@ -344,14 +356,14 @@ function paneCamera() {
   f.append(stepSlider(t('focal'), FOCALS, c.focal, (v) => `${v} mm`, chg((v) => { c.focal = v; }, { env: false })));
   f.append(slider(t('camDist'), c.dist, 0.5, camMax(), 0.05, fmtM, chg((v) => { c.dist = v; }, { env: false })));
   f.append(slider(t('camHeight'), c.height, 0.3, 2.6, 0.05, fmtM, chg((v) => { c.height = v; }, { env: false })));
-  f.append(slider(t('camAngle'), c.angle, -90, 90, 1, fmtDeg, chg((v) => { c.angle = v; }, { env: false })));
+  f.append(adv(slider(t('camAngle'), c.angle, -90, 90, 1, fmtDeg, chg((v) => { c.angle = v; }, { env: false }))));
   f.append(select(t('aspect'), c.aspect, Object.keys(ASPECTS).map((k) => [k, k]), (v) => { c.aspect = v; layout(); commit({ env: false }); }));
-  f.append(check(t('autoAvoid'), c.autoAvoid !== false, chg((v) => { c.autoAvoid = v; })));
-  f.append(check(t('eyeZoom'), c.eyeZoom, chg((v) => { c.eyeZoom = v; }, { env: false })));
-  f.append(check(t('histogram'), c.hist !== false, (v) => { c.hist = v; $('hist').hidden = !v; commit({ env: false }); }));
-  f.append(check(t('falseColor'), c.falseColor, chg((v) => { c.falseColor = v; }, { env: false, rebuild: true })));
+  f.append(adv(check(t('autoAvoid'), c.autoAvoid !== false, chg((v) => { c.autoAvoid = v; }))));
+  f.append(adv(check(t('eyeZoom'), c.eyeZoom, chg((v) => { c.eyeZoom = v; }, { env: false }))));
+  f.append(adv(check(t('histogram'), c.hist !== false, (v) => { c.hist = v; $('hist').hidden = !v; commit({ env: false }); })));
+  f.append(adv(check(t('falseColor'), c.falseColor, chg((v) => { c.falseColor = v; }, { env: false, rebuild: true }))));
   if (c.falseColor) f.append(el('div', { class: 'note' }, t('falseLegend')));
-  f.append(check(t('clip'), c.clip, chg((v) => { c.clip = v; }, { env: false })));
+  f.append(adv(check(t('clip'), c.clip, chg((v) => { c.clip = v; }, { env: false }))));
   return f;
 }
 
@@ -387,24 +399,24 @@ function paneSubject() {
         f.append(el('div', { class: 'note' }, t('groupNote')));
       }
       f.append(select(t('pose'), s.pose || 'standing', [['standing', t('pose.standing')], ['seated', t('pose.seated')]], rebuild((v) => { s.pose = v; })));
-      f.append(select(t('arms'), s.arms || 'down', ARM_POSES.map((k) => [k, t('arms.' + k)]), chg((v) => { s.arms = v; })));
-      f.append(slider(t('smile'), s.smile || 0, 0, 100, 5, (v) => `${v}%`, chg((v) => { s.smile = v; })));
-      f.append(check(t('glasses'), s.glasses, chg((v) => { s.glasses = v; })));
+      f.append(adv(select(t('arms'), s.arms || 'down', ARM_POSES.map((k) => [k, t('arms.' + k)]), chg((v) => { s.arms = v; }))));
+      f.append(adv(slider(t('smile'), s.smile || 0, 0, 100, 5, (v) => `${v}%`, chg((v) => { s.smile = v; }))));
+      f.append(adv(check(t('glasses'), s.glasses, chg((v) => { s.glasses = v; }))));
       f.append(select(t('hair'), s.hair, [...modelMeta(s).hair.map((k) => [k, t('hair.' + k)]), ['none', t('hair.none')]], chg((v) => { s.hair = v; })));
-      f.append(select(t('hairColor'), s.hairColor, Object.keys(HAIR_COLORS).map((k) => [k, t('hc.' + k)]), chg((v) => { s.hairColor = v; })));
-      f.append(select(t('eyes'), s.eyes, EYE_COLORS.map((k) => [k, t('eye.' + k)]), chg((v) => { s.eyes = v; })));
-      f.append(select(t('clothes'), s.clothes, Object.keys(CLOTHES_COLORS).map((k) => [k, t('cc.' + k)]), chg((v) => { s.clothes = v; })));
+      f.append(adv(select(t('hairColor'), s.hairColor, Object.keys(HAIR_COLORS).map((k) => [k, t('hc.' + k)]), chg((v) => { s.hairColor = v; }))));
+      f.append(adv(select(t('eyes'), s.eyes, EYE_COLORS.map((k) => [k, t('eye.' + k)]), chg((v) => { s.eyes = v; }))));
+      f.append(adv(select(t('clothes'), s.clothes, Object.keys(CLOTHES_COLORS).map((k) => [k, t('cc.' + k)]), chg((v) => { s.clothes = v; }))));
     }
     f.append(slider(t('headYaw'), s.yaw, -70, 70, 1, fmtDeg, chg((v) => { s.yaw = v; })));
-    f.append(slider(t('headPitch'), s.pitch, -25, 25, 1, fmtDeg, chg((v) => { s.pitch = v; })));
-    if (s.model !== 'scan') f.append(slider(t('headTilt'), s.tilt || 0, -25, 25, 1, fmtDeg, chg((v) => { s.tilt = v; })));
+    f.append(adv(slider(t('headPitch'), s.pitch, -25, 25, 1, fmtDeg, chg((v) => { s.pitch = v; }))));
+    if (s.model !== 'scan') f.append(adv(slider(t('headTilt'), s.tilt || 0, -25, 25, 1, fmtDeg, chg((v) => { s.tilt = v; }))));
   } else {
     if (s.type === 'material') {
       f.append(select(t('material'), s.mat, MATERIAL_IDS.map((k) => [k, t('mat.' + k)]), chg((v) => { s.mat = v; })));
       f.append(select(t('shape'), s.shape, SHAPE_IDS.map((k) => [k, t('shape.' + k)]), chg((v) => { s.shape = v; })));
     }
-    f.append(check(t('tent'), s.tent, chg((v) => { s.tent = v; })));
-    f.append(check(t('foa'), s.foa, (v) => { s.foa = v; commit({ env: false, rebuild: true }); }));
+    f.append(adv(check(t('tent'), s.tent, chg((v) => { s.tent = v; }))));
+    f.append(adv(check(t('foa'), s.foa, (v) => { s.foa = v; commit({ env: false, rebuild: true }); })));
     if (s.foa) f.append(el('div', { class: 'note' }, t('foaNote')));
     f.append(slider(t('rotate'), s.rot, -180, 180, 1, fmtDeg, chg((v) => { s.rot = v; })));
     f.append(select(t('table'), s.table, ['white', 'black', 'wood'].map((k) => [k, t('table.' + k)]), chg((v) => { s.table = v; })));
@@ -425,13 +437,13 @@ function paneSet() {
   custom.addEventListener('input', () => { s.backdrop = 'custom'; s.backdropColor = custom.value; commit(); });
   sw.append(custom);
   f.append(sw);
-  f.append(select(t('bdKind'), s.kind || 'paper', BACKDROP_TYPES.map((k) => [k, t('bdKind.' + k)]), (v) => { s.kind = v; commit(); }));
+  f.append(adv(select(t('bdKind'), s.kind || 'paper', BACKDROP_TYPES.map((k) => [k, t('bdKind.' + k)]), (v) => { s.kind = v; commit(); })));
   f.append(select(t('room'), s.room || 'medium', Object.keys(ROOMS).map((k) => [k, t('room.' + k)]), (v) => { s.room = v; setRoom(v); fitRoom(); commit({ rebuild: true }); }));
-  f.append(select(t('floor'), s.floor || 'concrete', FLOORS.map((k) => [k, t('floor.' + k)]), (v) => { s.floor = v; commit(); }));
+  f.append(adv(select(t('floor'), s.floor || 'concrete', FLOORS.map((k) => [k, t('floor.' + k)]), (v) => { s.floor = v; commit(); })));
   f.append(el('div', { class: 'note', id: 'bgNote', hidden: true }));
   f.append(slider(t('backDist'), Math.min(s.backDist, backMax()), 0.4, backMax(), 0.05, fmtM, (v) => { s.backDist = v; commit(); }));
-  f.append(select(t('roomLux'), String(s.roomLux || 0), ROOM_LIGHT.levels.map((k) => [String(k), k ? `${k} lux` : t('roomOff')]), (v) => { s.roomLux = +v; commit({ rebuild: true }); }));
-  if (s.roomLux) f.append(select(t('roomK'), String(s.roomK || 3000), ROOM_LIGHT.kelvins.map((k) => [String(k), `${k} K`]), (v) => { s.roomK = +v; commit(); }));
+  f.append(adv(select(t('roomLux'), String(s.roomLux || 0), ROOM_LIGHT.levels.map((k) => [String(k), k ? `${k} lux` : t('roomOff')]), (v) => { s.roomLux = +v; commit({ rebuild: true }); })));
+  if (s.roomLux) f.append(adv(select(t('roomK'), String(s.roomK || 3000), ROOM_LIGHT.kelvins.map((k) => [String(k), `${k} K`]), (v) => { s.roomK = +v; commit(); })));
   f.append(select(t('walls'), s.walls, Object.keys(WALLS).map((k) => [k, t('walls.' + k)]), (v) => { s.walls = v; commit(); }));
   // saved setups and sharing
   f.append(el('div', { class: 'editor' }, el('h3', {}, t('savedTitle'))));
@@ -484,6 +496,7 @@ async function startChallenge(id) {
   challengeBusy = true;
   leaveHome();
   const kind = (CHALLENGES.find((c) => c.id === id) || {}).kind || 'portrait';
+  if (simple && kind === 'bg') setSimple(false); // background lights and gels are advanced controls
   state.view = 'camera';
   if (kind === 'portrait' || kind === 'bg') { state.subject.type = 'portrait'; state.subject.group = 1; }
   Object.assign(state.set, kind === 'portrait' ? { walls: 'gray' } : { kind: 'paper' });
@@ -606,7 +619,9 @@ function renderPane() {
   const eff = tab === 'diagram' ? 'lights' : tab;
   const pane = $('pane');
   const keep = pane.dataset.tab === eff ? pane.scrollTop : 0;
-  pane.replaceChildren(PANES[eff]());
+  const frag = PANES[eff]();
+  if (eff !== 'learn') frag.append(el('div', { class: 'modeRow' }, el('p', { class: 'hint' }, t(simple ? 'modeSimpleHint' : 'modeFullHint')), button(t(simple ? 'modeShowAll' : 'modeSimple'), '', () => setSimple(!simple))));
+  pane.replaceChildren(frag);
   pane.dataset.tab = eff;
   pane.scrollTop = keep;
   updateReadouts();

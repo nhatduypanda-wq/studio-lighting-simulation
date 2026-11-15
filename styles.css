@@ -159,3 +159,7 @@ dialog button { background: var(--accent); color: var(--accent-ink); border: 0; 
 details.gear summary { cursor: pointer; font-weight: 600; font-size: 15px; }
 details.gear[open] summary { margin-bottom: 8px; }
 details.gear .items li { padding: 6px 10px; }
+
+body.simple .adv { display: none !important; }
+.modeRow { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; }
+.modeRow .btn { width: 100%; }
