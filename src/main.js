@@ -15,7 +15,7 @@ import { GEAR_TYPES, GEAR_MODS, defaultGear, missing, adapt } from './gear.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.5';
+const APP_VERSION = '8.6';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -228,12 +228,24 @@ function el(tag, props = {}, ...kids) {
   for (const k of kids) if (k != null) e.append(k);
   return e;
 }
+// ---- glossary: a "?" next to a control opens a short explanation of the term ----------
+const GLOSS = ['stop', 'aperture', 'shutter', 'iso', 'wb', 'focal', 'modifier', 'grid', 'gel', 'feather', 'inverse', 'reflector', 'bounce', 'key', 'fill', 'rim', 'ratio', 'hardsoft', 'catchlight', 'ev', 'dof'];
+const TERM_OF = { power: 'stop', aperture: 'aperture', shutter: 'shutter', iso: 'iso', wb: 'wb', kelvin: 'wb', focal: 'focal', modifier: 'modifier', grid: 'grid', gel: 'gel', feather: 'feather',
+  distance: 'inverse', backDist: 'inverse', surface: 'reflector', walls: 'bounce' };
+let termMap = null, termLang = '';
+function showTerm(id) { $('glossTitle').textContent = t(`g.${id}.t`); $('glossBody').textContent = t(`g.${id}.b`); $('glossClose').textContent = t('glossClose'); $('gloss').showModal(); }
+function lab(label) {
+  if (termLang !== getLang()) { termLang = getLang(); termMap = {}; for (const k in TERM_OF) termMap[t(k)] = TERM_OF[k]; }
+  const span = el('span', {}, label), id = termMap[label];
+  if (id) span.append(el('button', { type: 'button', class: 'q', 'aria-label': t('glossAbout'), onclick: (e) => { e.preventDefault(); e.stopPropagation(); showTerm(id); } }, '?'));
+  return span;
+}
 function slider(label, value, min, max, step, fmt, onInput) {
   const out = el('output', {}, fmt(value));
   const inp = el('input', { type: 'range', min, max, step, 'aria-label': label });
   inp.value = value;
   inp.addEventListener('input', () => { const v = parseFloat(inp.value); out.textContent = fmt(v); onInput(v); });
-  return el('div', { class: 'row' }, el('div', { class: 'lab' }, el('span', {}, label), out), inp);
+  return el('div', { class: 'row' }, el('div', { class: 'lab' }, lab(label), out), inp);
 }
 function stepSlider(label, list, value, fmt, onInput) {
   let idx = list.indexOf(value); if (idx < 0) idx = 0;
@@ -243,12 +255,12 @@ function select(label, value, options, onChange) {
   const s = el('select', { 'aria-label': label });
   for (const [v, text] of options) { const o = el('option', { value: v }, text); if (v === value) o.selected = true; s.append(o); }
   s.addEventListener('change', () => onChange(s.value));
-  return el('div', { class: 'row' }, el('div', { class: 'lab' }, el('span', {}, label)), s);
+  return el('div', { class: 'row' }, el('div', { class: 'lab' }, lab(label)), s);
 }
 function check(label, value, onChange) {
   const c = el('input', { type: 'checkbox' }); c.checked = !!value;
   c.addEventListener('change', () => onChange(c.checked));
-  return el('label', { class: 'check' }, el('span', {}, label), c);
+  return el('label', { class: 'check' }, lab(label), c);
 }
 const button = (label, cls, onClick) => el('button', { type: 'button', class: 'btn ' + (cls || ''), onclick: onClick }, label);
 
@@ -571,7 +583,7 @@ function gearCard() {
   card.append(el('div', { class: 'btns' }, button(t('gearClear'), '', () => { gear = null; saveGear(); })));
   return card;
 }
-let gearOpen = false;
+let gearOpen = false, glossOpen = false;
 
 // ---- first-run tour: a spotlight on one part of the screen at a time ------------------
 const TOUR = [
@@ -603,6 +615,10 @@ window.addEventListener('resize', () => { if (tourStep >= 0) tourShow(tourStep);
 function paneLearn() {
   const f = document.createDocumentFragment();
   f.append(gearCard());
+  const gl = el('details', { class: 'lesson gear' }, el('summary', {}, t('glossTitle')), el('p', {}, t('glossIntro')));
+  if (glossOpen) gl.open = true; gl.addEventListener('toggle', () => { glossOpen = gl.open; });
+  const terms = el('div', { class: 'terms' }); for (const id of GLOSS) terms.append(el('button', { type: 'button', class: 'ghost', onclick: () => showTerm(id) }, t(`g.${id}.t`)));
+  gl.append(terms); f.append(gl);
   const card = el('div', { class: 'lesson' }, el('h3', {}, t('challenge')), el('p', {}, t('challengeIntro')));
   const pick = el('select', { 'aria-label': t('challenge') });
   CHALLENGES.forEach(({ id, kind }) => { const n = CHALLENGES.filter((c) => c.kind === kind).findIndex((c) => c.id === id) + 1; const o = el('option', { value: id }, `${t('chKind.' + kind)} ${n}`); if (challenge && challenge.id === id) o.selected = true; pick.append(o); });
