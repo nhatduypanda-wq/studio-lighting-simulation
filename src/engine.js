@@ -166,6 +166,7 @@ export class Engine {
     this.rigs = new Map();
     this.subject = null; this.subjectType = null;
     this.target = new THREE.Vector3(0, 1.57, 0);
+    this.look = this.target.clone();
     this.view = 'camera';
     this.n = 0; this.dirty = true; this.envPasses = 3;
     this.onProgress = null;
@@ -248,11 +249,13 @@ export class Engine {
     this.photoCam.updateProjectionMatrix();
     const cp = cameraPose(cam, T);
     this.camPos = new THREE.Vector3(cp.x, cp.y, cp.z);
+    // where the camera points: the face, or lower for half- and full-length framing
+    this.look = new THREE.Vector3(T.x, T.y + (cam.top ? 0 : cam.aimDy || 0), T.z);
     this.camRig.head.position.copy(this.camPos);
-    this.camRig.head.lookAt(this.target);
+    this.camRig.head.lookAt(this.look);
     this.camRig.stand.position.set(cp.x, 0, cp.z);
     this.camRig.stand.userData.setHeight(cp.y - 0.06);
-    this.photoCam.position.copy(this.camPos); this.photoCam.up.set(0, 1, 0); this.photoCam.lookAt(this.target);
+    this.photoCam.position.copy(this.camPos); this.photoCam.up.set(0, cam.top ? 0 : 1, cam.top ? -1 : 0); this.photoCam.lookAt(this.look);
     this.photoCam.clearViewOffset(); this.photoCam.updateMatrixWorld(true);
     this.frameMatrix = new THREE.Matrix4().multiplyMatrices(this.photoCam.projectionMatrix, this.photoCam.matrixWorldInverse);
 
@@ -405,8 +408,8 @@ export class Engine {
     }
     const c = this.photoCam, v = this._v;
     c.position.copy(this.camPos);
-    c.up.set(0, 1, 0);
-    c.lookAt(this.target);
+    if (this.state.camera.top) c.up.set(0, 0, -1); else c.up.set(0, 1, 0);
+    c.lookAt(this.look);
     // eye close-up: render a 5x crop centred on the eyes to inspect the catchlights
     let fw = this.W, fh = this.H, ox = 0, oy = 0;
     const st = this.state;
@@ -422,7 +425,7 @@ export class Engine {
       const rr = Math.sqrt(halton(n, 5)) * this.lensRadius, th = halton(n, 7) * Math.PI * 2;
       const right = v.a.set(1, 0, 0).applyQuaternion(c.quaternion), up = v.b.set(0, 1, 0).applyQuaternion(c.quaternion);
       c.position.addScaledVector(right, rr * Math.cos(th)).addScaledVector(up, rr * Math.sin(th));
-      c.lookAt(this.target);
+      c.lookAt(this.look);
     } else if (fw === this.W) c.clearViewOffset();
     return c;
   }

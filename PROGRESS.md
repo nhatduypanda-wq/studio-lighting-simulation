@@ -36,7 +36,7 @@ Ghi chú kỹ thuật:
 - `meterLight` nay lấy hướng đèn theo chủ thể thật (trước đây coi như đèn chĩa vào điểm đo).
 - Năm bài học: bgTone, bgWhite, bgSpot, bgGel, bgShadow.
 
-## Giai đoạn 9 — dẫn dắt người mới: ĐANG LÀM (người dùng duyệt 15/11/2026, tự chạy theo lịch)
+## Giai đoạn 9 — dẫn dắt người mới: XONG toàn bộ 9a–9i, bản 8.8; lịch tự chạy đã tắt (người dùng duyệt 15/11/2026, tự chạy theo lịch)
 
 Thứ tự: việc khó, cần suy luận nhiều làm trước. Mỗi mục xong: thử bằng Playwright (máy tính + điện thoại, vi + en), đánh dấu [x], tăng APP_VERSION và CACHE, commit, push `main`.
 
@@ -48,10 +48,11 @@ Thứ tự: việc khó, cần suy luận nhiều làm trước. Mỗi mục xon
 - [x] 9f. (xong, bản 8.5; `TOUR` + `tourShow()` trong main.js, lớp phủ `#tour`; tự chạy lần đầu, cờ `sl.tour.v1`; nút xem lại ở cuối tab Phông) Hướng dẫn lần đầu mở app (5–6 bước).
 - [x] 9g. (xong, bản 8.6; 21 thuật ngữ `g.<id>.t/.b` trong i18n; dấu ? cạnh nhãn qua `lab()` + `TERM_OF`; thẻ Thuật ngữ ở tab Học; hộp thoại `#gloss`) Giải thích thuật ngữ tại chỗ (stop, f-stop, key, fill, feather, lưới, gel…).
 - [x] 9h. (xong, bản 8.7; `exportSheet()` trong main.js: trang A4 PNG gồm ảnh, sơ đồ, thông số máy, vị trí từng đèn, danh sách đồ, trình tự dựng) Phiếu mang đi chụp: sơ đồ + danh sách thiết bị + thông số máy + công suất từng đèn.
-- [ ] 9i. Khung toàn thân / nửa người / cận mặt chọn sẵn; góc máy từ trên xuống cho sản phẩm.
+- [x] 9i. (xong, bản 8.8; `FRAMINGS` + `applyFraming()` trong main.js, `camera.aimDy` → `engine.look`; `camera.top` cho sản phẩm, `cameraPose` trả vị trí phía trên, up = −z) Khung toàn thân / nửa người / cận mặt chọn sẵn; góc máy từ trên xuống cho sản phẩm.
 
 Không làm: ảnh thật để đối chiếu (không có nguồn ảnh được phép dùng).
 
 ## Việc tiếp theo (chờ người dùng duyệt)
+- Chưa chạy thử từng bước 17/18 bài học và 4 thử thách mới; chưa thử chế độ chất lượng cao với cỡ cảnh toàn thân / góc máy từ trên xuống.
 - Cần người dùng xác nhận trên thiết bị thật: tốc độ trên iPhone/iPad (nhất là nhóm 4–5 người), chế độ chất lượng cao, tự cập nhật.
 - Ý tưởng thêm: chỉnh riêng từng người trong nhóm, nhóm trên 5 người, thử thách cho nhóm và sản phẩm.

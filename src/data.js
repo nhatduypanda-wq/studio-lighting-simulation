@@ -444,6 +444,7 @@ export const PRODUCT_CAMERA = {
 };
 
 export function cameraPose(cam, target) {
+  if (cam.top) return { x: target.x, y: target.y + cam.dist, z: target.z }; // looking straight down
   const a = cam.angle * Math.PI / 180;
   return { x: target.x + Math.sin(a) * cam.dist, y: cam.height, z: target.z + Math.cos(a) * cam.dist };
 }

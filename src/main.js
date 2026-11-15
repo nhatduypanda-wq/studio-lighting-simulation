@@ -2,7 +2,7 @@ import { t, getLang, setLang } from './i18n.js';
 import {
   LIGHT_TYPES, MODIFIERS, PANELS, PANEL_SURFACES, SUBJECTS, SKIN_TONES, BACKDROPS, WALLS, PRESETS,
   FORMATIONS, groupMembers, groupSize, groupCamera, ARM_POSES, GELS, GOBOS, BACKDROP_TYPES, ROOM_LIGHT, ROOM, ROOMS, FLOORS, MOUNTS, setRoom, setBackdrop, meterBackdrop, MODELS, LOOKS, AGES, HAIR_COLORS, EYE_COLORS, CLOTHES_COLORS, PRESET_FACE_Y, modelMeta,
-  APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED,
+  APERTURES, SHUTTERS, ISOS, FOCALS, ASPECTS, SYNC_SPEED, sensorSize,
   defaultState, makeLight, makePanel, nextId, modSpec, meterLight, subjectTarget, PRODUCT_CAMERA, avoidCamera,
 } from './data.js';
 import { Diagram, LIMITS } from './diagram.js';
@@ -15,7 +15,7 @@ import { GEAR_TYPES, GEAR_MODS, defaultGear, missing, adapt } from './gear.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.7';
+const APP_VERSION = '8.8';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -144,6 +144,18 @@ let critSig = null;
 const GEAR_STORE = 'sl.gear.v1';
 let gear = (() => { try { const g = JSON.parse(localStorage.getItem(GEAR_STORE)); return g && GEAR_TYPES.includes(g.type) ? { ...defaultGear(), ...g } : null; } catch { return null; } })();
 function saveGear() { try { if (gear) localStorage.setItem(GEAR_STORE, JSON.stringify(gear)); else localStorage.removeItem(GEAR_STORE); } catch { /* private mode */ } renderChrome(); renderPane(); }
+// Ready-made framings for one person: how much of the body is in the picture.
+const FRAMINGS = { closeup: { hf: 0.42, focal: 85, aspect: '4:5', aim: () => 0, cam: 0.01 }, bust: { hf: 0.74, focal: 85, aspect: '4:5', aim: () => 0, cam: 0.01 },
+  half: { hf: 1.15, focal: 85, aspect: '4:5', aim: () => -0.33, cam: -0.15 }, full: { hf: (y) => (y + 0.22) * 1.1, focal: 50, aspect: '2:3', aim: (y) => (y + 0.22) / 2 - y, cam: -0.38 } };
+function applyFraming(id) {
+  const f = FRAMINGS[id]; if (!f) return;
+  const T = subjectTarget(state.subject), c = state.camera, hf = typeof f.hf === 'function' ? f.hf(T.y) : f.hf;
+  const sh = sensorSize(ASPECTS[f.aspect]).h;
+  let focal = f.focal;
+  if (hf * focal / sh > camMax()) focal = [...FOCALS].reverse().find((v) => hf * v / sh <= camMax()) || FOCALS[0]; // small room: go wider
+  Object.assign(c, { framing: id, focal, aspect: f.aspect, dist: Math.max(0.5, Math.min(camMax(), Math.round(hf * focal / sh * 20) / 20)), height: Math.round((T.y + f.cam) * 100) / 100, aimDy: f.aim(T.y), angle: 0, top: false, eyeZoom: false });
+}
+const resetAim = () => { Object.assign(state.camera, { aimDy: 0, top: false, framing: 'bust' }); };
 const leaveHome = () => { if (state.set.room === 'home') { state.set.room = 'medium'; setRoom('medium'); } };
 // step-by-step lesson in progress, and the lessons already completed
 let coach = null;
@@ -151,7 +163,7 @@ const LESSON_STORE = 'sl.lessons.v1';
 const lessonsDone = new Set((() => { try { return JSON.parse(localStorage.getItem(LESSON_STORE)) || []; } catch { return []; } })());
 function startLesson(ls) {
   if (simple && ['feather', 'colour'].includes(ls.id)) setSimple(false); // these lessons use advanced controls
-  leaveHome(); applyLesson(state, ls); coach = startCoach(state, ls);
+  leaveHome(); resetAim(); applyLesson(state, ls); coach = startCoach(state, ls);
   $('preset').value = 'custom'; layout(); setTab('lights'); commit({ rebuild: true }); renderCoach();
 }
 function renderCoach() {
@@ -190,6 +202,7 @@ function setPolar(item, d, a) {
 
 function applyPreset(id, mine = false) {
   const p = PRESETS[id]; if (!p) return;
+  resetAim();
   coach = null; renderCoach();
   state.subject.yaw = 0;
   if (p.subject) Object.assign(state.subject, p.subject);
@@ -367,6 +380,8 @@ function paneCamera() {
   f.append(stepSlider(t('shutter'), SHUTTERS, c.shutter, (v) => `1/${v} s`, chg((v) => { c.shutter = v; })));
   f.append(stepSlider(t('iso'), ISOS, c.iso, (v) => `ISO ${v}`, chg((v) => { c.iso = v; })));
   f.append(slider(t('wb'), c.wb, 2500, 10000, 100, (v) => `${v} K`, chg((v) => { c.wb = v; })));
+  if (state.subject.type === 'portrait' && groupSize(state.subject) === 1) f.append(select(t('framing'), c.framing || 'bust', Object.keys(FRAMINGS).map((k) => [k, t('framing.' + k)]), (v) => { applyFraming(v); layout(); commit({ rebuild: true }); }));
+  if (state.subject.type !== 'portrait') f.append(check(t('camTop'), c.top, (v) => { c.top = v; if (v) c.dist = Math.max(c.dist, 1); commit({ rebuild: true }); }));
   f.append(stepSlider(t('focal'), FOCALS, c.focal, (v) => `${v} mm`, chg((v) => { c.focal = v; }, { env: false })));
   f.append(slider(t('camDist'), c.dist, 0.5, camMax(), 0.05, fmtM, chg((v) => { c.dist = v; }, { env: false })));
   f.append(slider(t('camHeight'), c.height, 0.3, 2.6, 0.05, fmtM, chg((v) => { c.height = v; }, { env: false })));
@@ -387,7 +402,7 @@ function paneSubject() {
   const chg = (fn, opts) => (v) => { fn(v); commit(opts); };
   f.append(select(t('subject'), s.type, SUBJECTS.map((k) => [k, t('subject.' + k)]), (v) => {
     const before = subjectTarget(s).y, wasPortrait = s.type === 'portrait';
-    s.type = v; shiftHeights(before);
+    s.type = v; shiftHeights(before); resetAim();
     Object.assign(state.camera, v === 'portrait' ? (wasPortrait ? {} : { dist: 2.1, focal: 85, aspect: '4:5' }) : PRODUCT_CAMERA[v]);
     state.camera.height = subjectTarget(s).y + (v === 'portrait' ? 0.01 : 0.14);
     layout(); commit({ rebuild: true });
@@ -405,7 +420,7 @@ function paneSubject() {
       f.append(select(t('look'), s.eth, LOOKS.map((k) => [k, t('look.' + k)]), rebuild((v) => { s.eth = v; })));
       f.append(select(t('age'), s.age, AGES.map((k) => [k, t('age.' + k)]), rebuild((v) => { s.age = v; })));
       f.append(select(t('group'), String(groupSize(s)), [1, 2, 3, 4, 5].map((k) => [String(k), k === 1 ? t('group.one') : t('group.n', { n: k })]), rebuild((v) => {
-        s.group = +v; Object.assign(state.camera, groupCamera(s, camMax())); layout();
+        s.group = +v; resetAim(); Object.assign(state.camera, groupCamera(s, camMax())); layout();
       })));
       if (groupSize(s) > 1) {
         f.append(select(t('formation'), s.formation || 'row', FORMATIONS.map((k) => [k, t('formation.' + k)]), rebuild((v) => { s.formation = v; })));
@@ -509,7 +524,7 @@ function renderSettled(minSamples = 32) { // resolves once the live view has ref
 async function startChallenge(id) {
   if (!engine || challengeBusy) return;
   challengeBusy = true;
-  leaveHome();
+  leaveHome(); resetAim();
   const kind = (CHALLENGES.find((c) => c.id === id) || {}).kind || 'portrait';
   if (simple && kind === 'bg') setSimple(false); // background lights and gels are advanced controls
   state.view = 'camera';
