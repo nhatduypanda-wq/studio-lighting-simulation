@@ -89,6 +89,26 @@ export function critique(state) {
         i.stops = Math.min(0, Math.round((i.stops + Math.log2(before / modSpec(i).gain)) * 10) / 10);
       });
     }
+    // ---- products ----
+    if (!portrait) {
+      const azOf = (i) => Math.abs(((deg(Math.atan2(i.x - T.x, i.z - T.z)) + 540) % 360) - 180);
+      const lampsOn = all.map((r) => r.item), tent = !!sub.tent;
+      if (cam.top) {
+        if (el > 60) add('topFlat', 2, (st) => place(st.items.find((i) => i.id === it.id), T, g > 0.15 ? az : -90, 35));
+      } else if (sub.type === 'bottle') {
+        if (!lampsOn.some((i) => azOf(i) >= 120)) add('glassFront', 2, (st) => { const i = st.items.find((x) => x.id === it.id); i.x = T.x; i.z = round5(T.z - 0.75); i.h = round5(T.y + 0.35); if (LIGHT_TYPES[i.type].mods.includes('softbox') && HARD.includes(modSpec(i).id)) i.mod = 'softbox'; });
+      } else {
+        if (['shaker', 'watch', 'ring'].includes(sub.type) && !tent) {
+          const softOrBounce = lampsOn.some((i) => !HARD.includes(modSpec(i).id) || scrimFor(i, state)) || bounce.length > 0;
+          if (!softOrBounce) add('metalSmall', 2, (st) => { st.subject.tent = true; shiftExposure(st, st.items.map((i) => i.id), 2); });
+          else if (set.walls !== 'white' && lampsOn.every((i) => Math.sign(i.x - T.x) === Math.sign(dx)) && azOf(it) > 25
+            && !bounce.some((p) => Math.sign(p.x - T.x) !== Math.sign(dx) || Math.abs(p.x - T.x) < 0.2)) {
+            add('metalDarkSide', 1, (st) => { st.items.push(makePanel({ size: 'disc80', x: round5(T.x - Math.sign(dx) * 0.5), z: round5(T.z + 0.15), h: round5(T.y + 0.1) })); });
+          }
+        }
+        if (side < 15 && el < 25 && fill2 > 4) add('prodFlat', 1, (st) => place(st.items.find((i) => i.id === it.id), T, -55, 35));
+      }
+    }
     // ---- colour ----
     const lt = LIGHT_TYPES[it.type], k = lt.flash ? lt.kelvin : it.kelvin;
     if (!it.gel || it.gel === 'none') {

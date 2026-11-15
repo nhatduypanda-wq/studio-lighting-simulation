@@ -52,14 +52,14 @@ Thứ tự: việc khó, cần suy luận nhiều làm trước. Mỗi mục xon
 
 Không làm: ảnh thật để đối chiếu (không có nguồn ảnh được phép dùng).
 
-## Giai đoạn 10 — kiểm tra bù + hoàn tác + bài học sản phẩm: ĐANG LÀM (người dùng duyệt 15/11/2026, tự chạy theo lịch)
+## Giai đoạn 10 — kiểm tra bù + hoàn tác + bài học sản phẩm: XONG toàn bộ 10a–10d, bản 8.11; lịch tự chạy đã tắt (người dùng duyệt 15/11/2026, tự chạy theo lịch)
 
 Mỗi mục xong: thử bằng Playwright, đánh dấu [x], tăng APP_VERSION và CACHE nếu có đổi mã, commit, push `main`.
 
 - [x] 10a. (xong, bản 8.9. Kết quả: 18/18 bài qua trọn sau khi nới 3 điều kiện "giảm 1 stop" thành 0,8 stop vì thanh công suất nhảy 1/3 stop, và thêm yêu cầu đúng sáng ở bước đổi sang dù; 4 thử thách còn lại chấm 99–100; chế độ đơn giản tự chuyển đúng; chất lượng cao: sửa pathtrace.js dùng `engine.look` + up cho góc từ trên xuống, và gobo nay nét nhờ coi đèn là nguồn điểm. Script: scratchpad t21.js, t23.js, hq.js) Kiểm tra bù: chạy trọn từng bước cả 18 bài học (mô phỏng thao tác đúng, xác nhận từng bước qua và bài được đánh dấu xong; sửa điều kiện nào quá chặt/lỏng); chấm thử 4 thử thách còn lại (lowkey, bgColour, groupSingle, brightfield) bằng đáp án; thử chế độ chất lượng cao (cửa sổ nhỏ, <60 mẫu) với cỡ cảnh toàn thân, góc máy từ trên xuống và gobo; thử chế độ đơn giản tự chuyển sang đầy đủ ở bài feather/colour và thử thách phông nền.
 - [x] 10b. (xong, bản 8.9; `hist` + `recordHistory()` trong main.js, gọi từ `commit()`; nút ↶ ↷ góc trên trái ảnh, Ctrl/Cmd+Z, Shift+Z; tối đa 60 bước) Hoàn tác / làm lại (undo/redo) cho mọi thay đổi bố cục.
 - [x] 10c. (xong, bản 8.10; 5 bài mới: glassBright, glassDark, tentMetal, flatlay, idPhoto — tổng 23 bài, đều qua bộ kiểm tra từng bước t21.js) Bài học từng bước cho sản phẩm (thủy tinh trường sáng/trường tối, kim loại + lều, flat lay từ trên xuống) và cho ảnh thẻ / ảnh hồ sơ.
-- [ ] 10d. Nhận xét ảnh cho sản phẩm (thủy tinh, kim loại, flat lay): lỗi thường gặp + nút sửa.
+- [x] 10d. (xong, bản 8.11; critique.js khối `products`: topFlat, glassFront, metalSmall, metalDarkSide, prodFlat, đều có nút sửa) Nhận xét ảnh cho sản phẩm (thủy tinh, kim loại, flat lay): lỗi thường gặp + nút sửa.
 
 ## Việc tiếp theo (chờ người dùng duyệt)
 - Chưa chạy thử từng bước 17/18 bài học và 4 thử thách mới; chưa thử chế độ chất lượng cao với cỡ cảnh toàn thân / góc máy từ trên xuống.

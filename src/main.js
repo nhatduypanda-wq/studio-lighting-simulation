@@ -15,7 +15,7 @@ import { GEAR_TYPES, GEAR_MODS, defaultGear, missing, adapt } from './gear.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.10';
+const APP_VERSION = '8.11';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
