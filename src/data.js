@@ -216,6 +216,15 @@ export const PRESETS = {
     items: () => [makeLight({ mod: 'octa', ...P(-12, 3.0), h: 2.55, stops: -0.3 })],
     subject: { group: 4, formation: 'arc', pose: 'standing', arms: 'down' }, set: { walls: 'white', kind: 'cyc' },
   },
+  // Background: a pool of light behind the subject, and a gelled backdrop.
+  bgHalo: {
+    items: () => [makeLight({ mod: 'softbox', grid: true, ...P(-45, 1.2), h: 2.0, stops: -2.3 }), makeLight({ mod: 'dish', grid: true, x: 0, z: -0.9, h: 0.6, stops: -2.7, aim: 'bg' })],
+    set: { walls: 'black', backDist: 1.9, backdrop: 'gray', backdropColor: BACKDROPS.gray, kind: 'paper' },
+  },
+  bgColour: {
+    items: () => [makeLight({ mod: 'softbox', grid: true, ...P(-35, 1.6), h: 2.0, stops: -1.8 }), makeLight({ mod: 'standard', gel: 'blue', x: 0.2, z: -0.7, h: 0.7, stops: -3.5, aim: 'bg' })],
+    set: { walls: 'black', backDist: 1.6, backdrop: 'gray', backdropColor: BACKDROPS.gray, kind: 'paper' },
+  },
   continuous: {
     items: () => [
       makeLight({ type: 'cob', mod: 'octa', ...P(-40, 1.3), h: 2.0, stops: -1 }),

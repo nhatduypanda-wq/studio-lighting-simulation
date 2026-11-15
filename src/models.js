@@ -624,21 +624,26 @@ function buildProduct(type, st) {
 const glbCache = new Map();
 function loadGLB(url) {
   if (!glbCache.has(url)) {
+    assets.pending++;
     glbCache.set(url, new Promise((resolve, reject) => new GLTFLoader().load(url, (g) => {
+      assets.pending--;
       const out = {};
       g.scene.traverse((o) => { if (o.isMesh) { o.geometry.userData.shared = true; out[o.name] = o.geometry; } });
       resolve(out);
-    }, undefined, reject)));
+    }, undefined, (e) => { assets.pending--; reject(e); })));
   }
   return glbCache.get(url);
 }
 // Called whenever a texture finishes loading so the renderer can redraw.
 let onAsset = null;
+// Number of model and texture files still downloading (the challenge waits for them).
+export const assets = { pending: 0 };
 export function setAssetCallback(fn) { onAsset = fn; }
 const texCache = new Map();
 function tex(name, srgb = true) {
   if (!texCache.has(name)) {
-    const t = new THREE.TextureLoader().load('assets/models/tex/' + name, () => onAsset && onAsset());
+    assets.pending++;
+    const t = new THREE.TextureLoader().load('assets/models/tex/' + name, () => { assets.pending--; onAsset && onAsset(); }, undefined, () => { assets.pending--; });
     t.flipY = false; t.anisotropy = 8;
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
     texCache.set(name, t);

@@ -8,12 +8,13 @@ import {
 import { Diagram, LIMITS } from './diagram.js';
 import { MATERIAL_IDS, SHAPE_IDS } from './materials.js';
 import { LESSONS, applyLesson } from './lessons.js';
+import { assets } from './models.js';
 import { critique, critiqueSig } from './critique.js';
 import { STEPS, startCoach, advance } from './coach.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.1';
+const APP_VERSION = '8.2';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -442,19 +443,28 @@ function paneSet() {
 }
 
 // ---- challenge: rebuild the lighting of a target photo -------------------------------
-const CHALLENGES = ['loop', 'rembrandt', 'butterfly', 'split', 'hard', 'clamshell', 'rim'];
+const CHALLENGES = [...['loop', 'rembrandt', 'butterfly', 'split', 'hard', 'clamshell', 'rim'].map((id) => ({ id, kind: 'portrait' })),
+  ...['highkey', 'lowkey', 'bgHalo', 'bgColour'].map((id) => ({ id, kind: 'bg' })),
+  ...['groupEven', 'groupSingle'].map((id) => ({ id, kind: 'group' })),
+  ...['tent', 'brightfield', 'darkfield'].map((id) => ({ id, kind: 'product' }))];
 let challenge = null, challengeBusy = false;
 async function tinyPixels(blob) {
   const bmp = await createImageBitmap(blob), c = document.createElement('canvas'); c.width = 40; c.height = 50;
   const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0, 40, 50);
   return g.getImageData(0, 0, 40, 50).data;
 }
-function renderSettled() { // resolves once the live view has refined the current set
+// Bounce light builds up over successive passes of the light probes (each pass sees the
+// surfaces as lit by the previous one), so refresh them a few times before comparing photos.
+async function renderConverged() {
+  for (let i = 0; i < 3; i++) { await renderSettled(2); engine?.invalidate(true); }
+  await renderSettled();
+}
+function renderSettled(minSamples = 32) { // resolves once the live view has refined the current set
   return new Promise((resolve) => {
     const t0 = Date.now();
     const tick = () => {
       const e = engine;
-      if (!e || Date.now() - t0 > 20000 || (!pending && !e.dirty && e.envPasses === 0 && e.n >= Math.min(e.maxSamples, 32))) resolve(); else setTimeout(tick, 150);
+      if (!e || Date.now() - t0 > 30000 || (!assets.pending && !pending && !e.dirty && e.envPasses === 0 && e.n >= Math.min(e.maxSamples, minSamples))) resolve(); else setTimeout(tick, 150);
     };
     setTimeout(tick, 300);
   });
@@ -462,28 +472,41 @@ function renderSettled() { // resolves once the live view has refined the curren
 async function startChallenge(id) {
   if (!engine || challengeBusy) return;
   challengeBusy = true;
-  state.view = 'camera'; state.subject.type = 'portrait'; state.subject.group = 1; renderChrome(); layout();
-  const T = subjectTarget(state.subject), dy = T.y - PRESET_FACE_Y;
-  const target = PRESETS[id].items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
-  Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600, angle: 0, focal: 85, dist: 1.7, aspect: '4:5', height: T.y + 0.01, falseColor: false });
-  Object.assign(state.set, { walls: 'gray' });
-  state.items = target; state.selected = null; state.preset = 'custom';
+  const kind = (CHALLENGES.find((c) => c.id === id) || {}).kind || 'portrait';
+  state.view = 'camera';
+  if (kind === 'portrait' || kind === 'bg') { state.subject.type = 'portrait'; state.subject.group = 1; }
+  Object.assign(state.set, kind === 'portrait' ? { walls: 'gray' } : { kind: 'paper' });
+  renderChrome(); layout();
+  let T = subjectTarget(state.subject), target;
+  if (kind === 'portrait') {
+    const dy = T.y - PRESET_FACE_Y;
+    target = PRESETS[id].items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
+    Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600, angle: 0, focal: 85, dist: 1.7, aspect: '4:5', height: T.y + 0.01, falseColor: false });
+    state.items = target;
+  } else {
+    // group, product and background challenges use the preset's own subject, set and camera
+    applyPreset(id); state.camera.falseColor = false;
+    if (kind === 'bg') Object.assign(state.camera, { angle: 0, focal: 85, dist: 2.1, aspect: '4:5' });
+    T = subjectTarget(state.subject); target = state.items.map((i) => ({ ...i }));
+    $('preset').value = 'custom';
+  }
+  state.selected = null; state.preset = 'custom';
   commit({ rebuild: true });
-  await renderSettled();
+  await renderConverged();
   const blob = await engine.snapshot();
   if ($('abImg').src) URL.revokeObjectURL($('abImg').src);
   const url = URL.createObjectURL(blob);
   $('abImg').src = url; $('abView').hidden = false;
   coach = null; renderCoach();
   challenge = { id, target, px: await tinyPixels(blob), url, result: null, reveal: false };
-  const first = makeLight({ mod: 'softbox', x: 0.3, z: 1.6, h: T.y + 0.2, stops: -3 });
+  const first = makeLight({ mod: 'softbox', x: 0.3, z: kind === 'product' ? 1 : 1.6, h: T.y + (kind === 'product' ? 0.4 : 0.2), stops: -3 });
   state.items = [first]; state.selected = first.id;
   challengeBusy = false;
   commit({ rebuild: true });
 }
 async function scoreChallenge() {
   if (!challenge || !engine) return;
-  await renderSettled();
+  await renderConverged();
   const cur = await tinyPixels(await engine.snapshot()), tgt = challenge.px;
   let diff = 0, la = 0, lb = 0;
   const lin = (v) => Math.pow(v / 255, 2.2);
@@ -500,7 +523,7 @@ function paneLearn() {
   const f = document.createDocumentFragment();
   const card = el('div', { class: 'lesson' }, el('h3', {}, t('challenge')), el('p', {}, t('challengeIntro')));
   const pick = el('select', { 'aria-label': t('challenge') });
-  CHALLENGES.forEach((id, i) => { const o = el('option', { value: id }, `${t('challenge')} ${i + 1}`); if (challenge && challenge.id === id) o.selected = true; pick.append(o); });
+  CHALLENGES.forEach(({ id, kind }) => { const n = CHALLENGES.filter((c) => c.kind === kind).findIndex((c) => c.id === id) + 1; const o = el('option', { value: id }, `${t('chKind.' + kind)} ${n}`); if (challenge && challenge.id === id) o.selected = true; pick.append(o); });
   card.append(el('div', { class: 'row' }, pick));
   card.append(el('div', { class: 'btns' }, button(challenge ? t('challengeRestart') : t('challengeStart'), 'primary', () => startChallenge(pick.value))));
   if (challenge) {
