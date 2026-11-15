@@ -9,10 +9,11 @@ import { Diagram, LIMITS } from './diagram.js';
 import { MATERIAL_IDS, SHAPE_IDS } from './materials.js';
 import { LESSONS, applyLesson } from './lessons.js';
 import { critique, critiqueSig } from './critique.js';
+import { STEPS, startCoach, advance } from './coach.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.0';
+const APP_VERSION = '8.1';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -61,6 +62,7 @@ function saveSetup() {
 }
 function loadSetup(entry) {
   const st = normalize(entry.state); if (!st) return;
+  coach = null; renderCoach();
   st.preset = 'custom'; st.selected = st.items[0]?.id ?? null;
   state = st; setRoom(state.set.room); setBackdrop(state.set); renderChrome(); layout(); commit({ rebuild: true });
 }
@@ -124,6 +126,34 @@ function fitRoom() {
   state.set.backDist = Math.min(state.set.backDist, backMax());
 }
 let critSig = null;
+// step-by-step lesson in progress, and the lessons already completed
+let coach = null;
+const LESSON_STORE = 'sl.lessons.v1';
+const lessonsDone = new Set((() => { try { return JSON.parse(localStorage.getItem(LESSON_STORE)) || []; } catch { return []; } })());
+function startLesson(ls) {
+  applyLesson(state, ls); coach = startCoach(state, ls);
+  $('preset').value = 'custom'; layout(); setTab('lights'); commit({ rebuild: true }); renderCoach();
+}
+function renderCoach() {
+  const box = $('coach');
+  box.hidden = !coach; box.textContent = '';
+  if (!coach) return;
+  const n = (STEPS[coach.id] || []).length, idx = LESSONS.findIndex((l) => l.id === coach.id);
+  const dots = el('span', { class: 'dots' }); for (let i = 0; i < n; i++) dots.append(el('i', { class: i < coach.step ? 'on' : '' }));
+  box.append(el('div', { class: 'hd' }, el('span', {}, `${t(`lesson.${coach.id}.t`)} · ${coach.done ? '✓' : t('coachStep', { n: coach.step + 1, m: n })}`), dots));
+  if (coach.done) {
+    box.append(el('p', {}, t('coachDone')));
+    const next = LESSONS[idx + 1], row = el('div', { class: 'btns' });
+    if (next) row.append(button(t('coachNext'), 'primary', () => startLesson(next)));
+    row.append(button(t('coachClose'), '', () => { coach = null; renderCoach(); }));
+    box.append(row);
+  } else {
+    box.append(el('p', {}, t(`lesson.${coach.id}.s${coach.step + 1}`)));
+    box.append(el('div', { class: 'btns' },
+      button(t('coachSkip'), '', () => { coach.step++; coach.skipped = true; if (coach.step >= n) coach.done = true; renderCoach(); }),
+      button(t('coachExit'), '', () => { coach = null; renderCoach(); })));
+  }
+}
 const touched = () => { state.preset = 'custom'; $('preset').value = 'custom'; };
 const selected = () => state.items.find((i) => i.id === state.selected) || null;
 const lightCount = () => state.items.filter((i) => i.kind === 'light').length;
@@ -140,6 +170,7 @@ function setPolar(item, d, a) {
 
 function applyPreset(id) {
   const p = PRESETS[id]; if (!p) return;
+  coach = null; renderCoach();
   state.subject.yaw = 0;
   if (p.subject) Object.assign(state.subject, p.subject);
   if (p.set) Object.assign(state.set, p.set);
@@ -443,6 +474,7 @@ async function startChallenge(id) {
   if ($('abImg').src) URL.revokeObjectURL($('abImg').src);
   const url = URL.createObjectURL(blob);
   $('abImg').src = url; $('abView').hidden = false;
+  coach = null; renderCoach();
   challenge = { id, target, px: await tinyPixels(blob), url, result: null, reveal: false };
   const first = makeLight({ mod: 'softbox', x: 0.3, z: 1.6, h: T.y + 0.2, stops: -3 });
   state.items = [first]; state.selected = first.id;
@@ -493,13 +525,13 @@ function paneLearn() {
     }
   }
   f.append(card);
-  f.append(el('p', { class: 'hint' }, t('learnIntro')));
+  f.append(el('p', { class: 'hint' }, t('learnIntro') + ' ' + t('learnProgress', { n: LESSONS.filter((l) => lessonsDone.has(l.id)).length, m: LESSONS.length })));
   LESSONS.forEach((ls, i) => {
-    f.append(el('div', { class: 'lesson' },
+    const ol = el('ol', {}); (STEPS[ls.id] || []).forEach((_, k) => ol.append(el('li', {}, t(`lesson.${ls.id}.s${k + 1}`))));
+    f.append(el('div', { class: 'lesson' + (lessonsDone.has(ls.id) ? ' done' : '') },
       el('h3', {}, `${i + 1}. ${t(`lesson.${ls.id}.t`)}`),
-      el('p', {}, t(`lesson.${ls.id}.b`)),
-      el('p', { class: 'try' }, t('tryIt') + ' ' + t(`lesson.${ls.id}.try`)),
-      button(t('lessonSetup'), 'primary', () => { applyLesson(state, ls); $('preset').value = 'custom'; layout(); commit({ rebuild: true }); })));
+      el('p', {}, t(`lesson.${ls.id}.b`)), ol,
+      button(t(lessonsDone.has(ls.id) ? 'lessonAgain' : 'lessonStart'), 'primary', () => startLesson(ls))));
   });
   return f;
 }
@@ -518,6 +550,7 @@ function renderPane() {
 }
 
 function renderChrome() {
+  renderCoach();
   document.title = `${t('appName')} — ${t('tagline')}`;
   for (const b of $('viewSeg').children) { b.textContent = t('view.' + b.dataset.view); b.classList.toggle('on', b.dataset.view === state.view); }
   $('presetLabel').textContent = t('presets');
@@ -618,6 +651,10 @@ function updateReadouts() {
       bn.classList.toggle('bad', b.N >= 0.5 && b.rho > 0.4 && b.lin >= 2.2);
     }
   }
+  if (coach && advance(state, coach)) {
+    if (coach.done && !coach.skipped) { lessonsDone.add(coach.id); try { localStorage.setItem(LESSON_STORE, JSON.stringify([...lessonsDone])); } catch { /* private mode */ } }
+    renderCoach();
+  }
   // automatic critique: common mistakes with a one-tap fix
   const list = critique(state), sig = critiqueSig(list) + getLang();
   const cb = $('critBtn');
@@ -688,6 +725,7 @@ $('preset').addEventListener('change', (e) => { if (e.target.value !== 'custom')
 $('langBtn').addEventListener('click', () => { setLang(getLang() === 'vi' ? 'en' : 'vi'); renderChrome(); renderPane(); diagram.draw(); });
 function resetAll() {
   if (!confirm(t('resetConfirm'))) return;
+  coach = null; renderCoach();
   state = defaultState(); state.preset = 'rembrandt'; state.selected = state.items[0].id;
   renderChrome(); layout(); commit({ rebuild: true });
 }

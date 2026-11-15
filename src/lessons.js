@@ -5,14 +5,14 @@ import { makeLight, makePanel, P, subjectTarget, groupCamera, PRESET_FACE_Y, PRO
 
 const L = (o) => makeLight(o), R = (o) => makePanel(o);
 export const LESSONS = [
-  { id: 'inverse', items: () => [L({ mod: 'softbox', ...P(-40, 0.8), h: 1.75, stops: -4.3 })], set: { backDist: 1.5, walls: 'black', backdrop: 'gray', backdropColor: '#777777' } },
-  { id: 'size', items: () => [L({ mod: 'standard', ...P(-40, 1.6), h: 2.1, stops: -4.7 })], set: { walls: 'gray' } },
+  { id: 'inverse', items: () => [L({ mod: 'softbox', ...P(-40, 0.8), h: 1.75, stops: -3.8 })], set: { backDist: 1.5, walls: 'black', backdrop: 'gray', backdropColor: '#777777' } },
+  { id: 'size', items: () => [L({ mod: 'standard', ...P(-40, 1.6), h: 2.1, stops: -4 })], set: { walls: 'gray' } },
   { id: 'patterns', items: () => [L({ mod: 'softbox', ...P(-45, 1.4), h: 2.1, stops: -2.1 })], set: { walls: 'gray' } },
   { id: 'ratio', items: () => [L({ mod: 'softbox', ...P(-40, 1.5), h: 2.0, stops: -2.3 }), L({ mod: 'umb_shoot', ...P(15, 2.2), h: 1.6, stops: -8 / 3 })], set: { walls: 'black' } },
-  { id: 'feather', items: () => [L({ mod: 'softbox', ...P(-60, 0.9), h: 1.7, stops: -4 })], set: { walls: 'gray' } },
-  { id: 'separation', items: () => [L({ mod: 'octa', ...P(-35, 1.5), h: 2.0, stops: -2 }), L({ mod: 'strip', grid: true, ...P(150, 1.5), h: 1.9, stops: -2.3 }),
+  { id: 'feather', items: () => [L({ mod: 'softbox', ...P(-60, 0.9), h: 1.7, stops: -3.4 })], set: { walls: 'gray' } },
+  { id: 'separation', items: () => [L({ mod: 'octa', ...P(-35, 1.5), h: 2.0, stops: -2.3 }), L({ mod: 'strip', grid: true, ...P(150, 1.5), h: 1.9, stops: -2.3 }),
     L({ mod: 'standard', x: 0.25, z: -1.2, h: 0.55, stops: -5, feather: 180 })], set: { walls: 'black', backDist: 2.2, backdrop: 'gray', backdropColor: '#777777' } },
-  { id: 'colour', items: () => [L({ mod: 'octa', ...P(-35, 1.5), h: 2.0, stops: -2 }), L({ mod: 'standard', gel: 'blue', ...P(140, 1.6), h: 1.8, stops: -3.3 }),
+  { id: 'colour', items: () => [L({ mod: 'octa', ...P(-35, 1.5), h: 2.0, stops: -2.5 }), L({ mod: 'standard', gel: 'blue', ...P(140, 1.6), h: 1.8, stops: -3.3 }),
     L({ mod: 'standard', gel: 'orange', ...P(-140, 1.6), h: 1.8, stops: -4.3 })], set: { walls: 'black' } },
   { id: 'metal', abs: true, subject: { type: 'shaker', table: 'black' }, items: () => [L({ mod: 'strip', ...P(-70, 0.7), h: 1.2, stops: -4 }), R({ size: 'disc80', ...P(70, 0.5), h: 1.1 })], set: { walls: 'black' } },
   { id: 'ambient', items: () => [L({ mod: 'softbox', ...P(-40, 1.4), h: 2.0, stops: -2.3 })], set: { walls: 'white', roomLux: 200, roomK: 3000, backdrop: 'beige', backdropColor: '#c9b79c', backDist: 3 } },
@@ -26,11 +26,11 @@ export const LESSONS = [
   { id: 'bgGel', items: () => [L({ mod: 'softbox', ...P(-35, 1.6), h: 2.0, stops: -2 }),
     L({ mod: 'standard', gel: 'blue', x: 0.2, z: -0.7, h: 0.7, stops: -3.5, aim: 'bg' })], set: { walls: 'black', backDist: 1.4, backdrop: 'gray', backdropColor: '#777777', kind: 'paper' } },
   { id: 'bgShadow', items: () => [L({ mod: 'standard', ...P(-25, 2.2), h: 1.7, stops: -3.2 })], set: { walls: 'gray', backDist: 0.5, backdrop: 'lightgray', backdropColor: '#b9b9b9', kind: 'paper' } },
-  { id: 'gFalloff', subject: { group: 4, formation: 'row', spacing: 0.5 }, items: () => [L({ mod: 'softbox', ...P(-72, 1.25), h: 1.9, stops: -3 })], set: { walls: 'black', kind: 'cyc' } },
+  { id: 'gFalloff', subject: { group: 4, formation: 'row', spacing: 0.5 }, items: () => [L({ mod: 'softbox', ...P(-72, 1.25), h: 1.9, stops: -2.4 })], set: { walls: 'black', kind: 'cyc' } },
   { id: 'gShadow', subject: { group: 3, formation: 'row', spacing: 0.42 }, items: () => [L({ mod: 'standard', ...P(-68, 2.4), h: 1.65, stops: -3.1 })], set: { walls: 'gray', kind: 'cyc' } },
   { id: 'gDepth', subject: { group: 5, formation: 'rows', spacing: 0.5 }, camera: { aperture: 2.8 },
     items: () => [L({ mod: 'umb_shoot', ...P(-40, 2.6), h: 2.3, stops: -4 }), L({ mod: 'umb_shoot', ...P(40, 2.6), h: 2.3, stops: -4 })], set: { walls: 'gray', kind: 'cyc' } },
-  { id: 'flag', items: () => [L({ mod: 'softbox', ...P(-70, 1.2), h: 1.8, stops: -3 }), R({ size: 'vflat', surface: 'black', ...P(80, 0.7), h: 1 })], set: { walls: 'white' } },
+  { id: 'flag', items: () => [L({ mod: 'softbox', ...P(-70, 1.2), h: 1.8, stops: -2.5 }), R({ size: 'vflat', surface: 'black', ...P(80, 0.7), h: 1 })], set: { walls: 'white' } },
 ];
 
 export function applyLesson(state, lesson) {
