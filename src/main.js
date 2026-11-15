@@ -15,7 +15,7 @@ import { GEAR_TYPES, GEAR_MODS, defaultGear, missing, adapt } from './gear.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.6';
+const APP_VERSION = '8.7';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -306,6 +306,7 @@ function paneLights() {
     state.items.push(it); state.selected = it.id; touched(); commit({ rebuild: true });
   }));
   f.append(add);
+  f.append(el('div', { class: 'btns' }, button(t('exportSheet'), '', exportSheet)));
   f.append(adv(el('div', { class: 'btns' }, button(t('exportDiagram'), '', exportDiagram))));
 
   const item = selected();
@@ -893,6 +894,69 @@ $('abView').addEventListener('click', () => {
 });
 
 // ---- lighting diagram export ---------------------------------------------------------
+// A printable page to take to a real shoot: photo, diagram, what to pack, camera settings
+// and where every light goes.
+async function exportSheet() {
+  if (!engine) return;
+  const W = 1240, H = 1754, M = 60, out = document.createElement('canvas'); out.width = W; out.height = H;
+  const g = out.getContext('2d'), F = '-apple-system, system-ui, "Segoe UI", Roboto, sans-serif';
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.textBaseline = 'top';
+  const text = (str, x, y, size = 24, weight = '400', color = '#111', maxW = W - M - x) => {
+    g.font = `${weight} ${size}px ${F}`; g.fillStyle = color;
+    let line = '', yy = y;
+    for (const word of String(str).split(' ')) { const tryLine = line ? line + ' ' + word : word; if (g.measureText(tryLine).width > maxW && line) { g.fillText(line, x, yy); yy += size * 1.35; line = word; } else line = tryLine; }
+    g.fillText(line, x, yy); return yy + size * 1.35;
+  };
+  const cam = state.camera, T = subjectTarget(state.subject);
+  let y = text(t('sheetTitle'), M, M, 40, '700');
+  y = text(`${state.preset && state.preset !== 'custom' ? t('preset.' + state.preset) + ' · ' : ''}${new Date().toLocaleDateString(getLang() === 'vi' ? 'vi-VN' : 'en-GB')} · ${t('appName')}`, M, y, 22, '400', '#555') + 14;
+  // photo and diagram side by side
+  const top = y, boxH = 620;
+  try {
+    const bmp = await createImageBitmap(await engine.snapshot());
+    const k = Math.min(520 / bmp.width, boxH / bmp.height); g.drawImage(bmp, M, top, bmp.width * k, bmp.height * k);
+  } catch { /* the sheet is still useful without the photo */ }
+  const dg = diagram.toCanvas(540, 620); g.drawImage(dg, W - M - 540, top, 540, 620);
+  y = top + boxH + 30;
+  const head = (k) => { y = text(t(k), M, y + 8, 26, '700', '#b07a00') + 2; };
+  head('sheetCamera');
+  y = text(`${cam.focal} mm · f/${cam.aperture} · 1/${cam.shutter} s · ISO ${cam.iso} · ${t('wb')} ${cam.wb} K`, M, y);
+  y = text(`${t('camDist')}: ${fmtM(cam.dist)} · ${t('camHeight')}: ${fmtM(cam.height)}` + (state.set.kind !== 'none' ? ` · ${t('backDist')}: ${fmtM(state.set.backDist)}` : ''), M, y);
+  head('sheetLights');
+  state.items.forEach((item, i) => {
+    if (item.on === false) return;
+    const p = polar(item), m = item.kind === 'light' ? meterLight(item, T, cam, state) : null;
+    let s1 = `${i + 1}. ${itemTitle(item)} (${itemSub(item)})`;
+    if (item.kind === 'light') { s1 += ` — ${fmtPower(item)}`; if (item.grid) s1 += ` · ${t('grid')}`; if (item.gel && item.gel !== 'none') s1 += ` · ${t('gel.' + item.gel)}`; if (item.aim === 'bg') s1 += ` · ${t('aim')}: ${t('aim.bg')}`; }
+    y = text(s1, M, y, 23, '600');
+    y = text(`${t('distance')} ${fmtM(p.d)} · ${t('angle')} ${fmtDeg(p.a)} · ${t('height')} ${fmtM(item.h)}` + (m && m.N >= 0.5 ? ` · ${t('meter')}: ${fmtF(m.N)}` : ''), M + 30, y, 21, '400', '#444') + 4;
+  });
+  head('sheetPack');
+  const pack = new Map(), addPack = (k) => pack.set(k, (pack.get(k) || 0) + 1);
+  let flash = false, stands = 0;
+  for (const item of state.items) {
+    if (item.on === false) continue;
+    if (item.kind === 'light') {
+      if (item.type === 'window') continue;
+      addPack(t('type.' + item.type)); if (modSpec(item).id !== 'standard' && modSpec(item).id !== 'speedhead') addPack(t('mod.' + modSpec(item).id));
+      if (item.grid) addPack(t('grid')); if (item.gel && item.gel !== 'none') addPack(`${t('gel')}: ${t('gel.' + item.gel)}`);
+      if (LIGHT_TYPES[item.type].flash) flash = true; stands++;
+    } else { addPack(`${itemTitle(item)} ${itemSub(item)}`); if (item.size !== 'vflat') stands++; }
+  }
+  if (stands) pack.set(t('sheetStands'), stands);
+  if (flash) pack.set(t('sheetTrigger'), 1);
+  if (state.set.kind !== 'none' && state.subject.type === 'portrait') pack.set(`${t('bdKind.' + (state.set.kind || 'paper'))} (${state.set.backdrop === 'custom' ? state.set.backdropColor : t('bd.' + state.set.backdrop)})`, 1);
+  const entries = [...pack.entries()], colW = (W - 2 * M) / 2, y0 = y;
+  entries.forEach(([k, n], i) => { const col = i % 2, row = Math.floor(i / 2); y = Math.max(y, text(`☐  ${n} × ${k}`, M + col * colW, y0 + row * 32, 22, '400', '#111', colW - 20)); });
+  head('sheetOrder');
+  for (const k of ['sheetOrder1', 'sheetOrder2', 'sheetOrder3']) y = text('• ' + t(k), M, y, 21, '400', '#333');
+  out.toBlob((blob) => {
+    const a = el('a', { href: URL.createObjectURL(blob), download: `shoot-sheet-${Date.now()}.png` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }, 'image/png');
+  return { used: y, height: H, canvas: out };
+}
 function exportDiagram() {
   const dg = diagram.toCanvas(700, 870);
   const T = subjectTarget(state.subject), cam = state.camera;
@@ -958,7 +1022,7 @@ import('./engine.js').then(({ Engine }) => {
   engine.sync(state, true);
   engine.start();
   $('loading').hidden = true;
-  window.__studio = { engine, getState: () => state };
+  window.__studio = { exportSheet, engine, getState: () => state };
 }).catch((err) => {
   console.error(err);
   $('loading').textContent = t('noWebgl');

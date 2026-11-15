@@ -47,7 +47,7 @@ Thứ tự: việc khó, cần suy luận nhiều làm trước. Mỗi mục xon
 - [x] 9e. (xong, bản 8.4; hàng nâng cao bọc bằng `adv()` → class `.adv`, ẩn bằng `body.simple`; lưu ở `sl.mode.v1`; người mới mặc định ở chế độ đơn giản) Chế độ đơn giản (ẩn tùy chọn nâng cao), chuyển qua lại với chế độ đầy đủ.
 - [x] 9f. (xong, bản 8.5; `TOUR` + `tourShow()` trong main.js, lớp phủ `#tour`; tự chạy lần đầu, cờ `sl.tour.v1`; nút xem lại ở cuối tab Phông) Hướng dẫn lần đầu mở app (5–6 bước).
 - [x] 9g. (xong, bản 8.6; 21 thuật ngữ `g.<id>.t/.b` trong i18n; dấu ? cạnh nhãn qua `lab()` + `TERM_OF`; thẻ Thuật ngữ ở tab Học; hộp thoại `#gloss`) Giải thích thuật ngữ tại chỗ (stop, f-stop, key, fill, feather, lưới, gel…).
-- [ ] 9h. Phiếu mang đi chụp: sơ đồ + danh sách thiết bị + thông số máy + công suất từng đèn.
+- [x] 9h. (xong, bản 8.7; `exportSheet()` trong main.js: trang A4 PNG gồm ảnh, sơ đồ, thông số máy, vị trí từng đèn, danh sách đồ, trình tự dựng) Phiếu mang đi chụp: sơ đồ + danh sách thiết bị + thông số máy + công suất từng đèn.
 - [ ] 9i. Khung toàn thân / nửa người / cận mặt chọn sẵn; góc máy từ trên xuống cho sản phẩm.
 
 Không làm: ảnh thật để đối chiếu (không có nguồn ảnh được phép dùng).
