@@ -36,6 +36,22 @@ Ghi chú kỹ thuật:
 - `meterLight` nay lấy hướng đèn theo chủ thể thật (trước đây coi như đèn chĩa vào điểm đo).
 - Năm bài học: bgTone, bgWhite, bgSpot, bgGel, bgShadow.
 
+## Giai đoạn 9 — dẫn dắt người mới: ĐANG LÀM (người dùng duyệt 15/11/2026, tự chạy theo lịch)
+
+Thứ tự: việc khó, cần suy luận nhiều làm trước. Mỗi mục xong: thử bằng Playwright (máy tính + điện thoại, vi + en), đánh dấu [x], tăng APP_VERSION và CACHE, commit, push `main`.
+
+- [ ] 9a. Nhận xét ảnh tự động: phát hiện lỗi thường gặp (hốc mắt tối, không có đốm sáng trong mắt, bóng mũi chạm môi, mặt cháy/thiếu sáng, ánh sáng bẹt, tỉ lệ sáng quá gắt, phông dính bóng, đèn sai màu…) từ hình học + số đo, kèm cách sửa và nút "sửa giúp tôi".
+- [ ] 9b. Bài học từng bước: mỗi bài chia bước, app tự kiểm tra điều kiện từng bước, lưu tiến độ (localStorage).
+- [ ] 9c. Thử thách cho chụp nhóm, sản phẩm và phông nền.
+- [ ] 9d. "Tôi có thiết bị gì": chọn đồ đang có, lọc bố cục làm được; bố cục phòng ở nhà (phòng nhỏ, cửa sổ + hắt sáng).
+- [ ] 9e. Chế độ đơn giản (ẩn tùy chọn nâng cao), chuyển qua lại với chế độ đầy đủ.
+- [ ] 9f. Hướng dẫn lần đầu mở app (5–6 bước).
+- [ ] 9g. Giải thích thuật ngữ tại chỗ (stop, f-stop, key, fill, feather, lưới, gel…).
+- [ ] 9h. Phiếu mang đi chụp: sơ đồ + danh sách thiết bị + thông số máy + công suất từng đèn.
+- [ ] 9i. Khung toàn thân / nửa người / cận mặt chọn sẵn; góc máy từ trên xuống cho sản phẩm.
+
+Không làm: ảnh thật để đối chiếu (không có nguồn ảnh được phép dùng).
+
 ## Việc tiếp theo (chờ người dùng duyệt)
 - Cần người dùng xác nhận trên thiết bị thật: tốc độ trên iPhone/iPad (nhất là nhóm 4–5 người), chế độ chất lượng cao, tự cập nhật.
 - Ý tưởng thêm: chỉnh riêng từng người trong nhóm, nhóm trên 5 người, thử thách cho nhóm và sản phẩm.
