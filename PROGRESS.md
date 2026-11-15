@@ -56,8 +56,8 @@ Không làm: ảnh thật để đối chiếu (không có nguồn ảnh đượ
 
 Mỗi mục xong: thử bằng Playwright, đánh dấu [x], tăng APP_VERSION và CACHE nếu có đổi mã, commit, push `main`.
 
-- [ ] 10a. Kiểm tra bù: chạy trọn từng bước cả 18 bài học (mô phỏng thao tác đúng, xác nhận từng bước qua và bài được đánh dấu xong; sửa điều kiện nào quá chặt/lỏng); chấm thử 4 thử thách còn lại (lowkey, bgColour, groupSingle, brightfield) bằng đáp án; thử chế độ chất lượng cao (cửa sổ nhỏ, <60 mẫu) với cỡ cảnh toàn thân, góc máy từ trên xuống và gobo; thử chế độ đơn giản tự chuyển sang đầy đủ ở bài feather/colour và thử thách phông nền.
-- [ ] 10b. Hoàn tác / làm lại (undo/redo) cho mọi thay đổi bố cục.
+- [x] 10a. (xong, bản 8.9. Kết quả: 18/18 bài qua trọn sau khi nới 3 điều kiện "giảm 1 stop" thành 0,8 stop vì thanh công suất nhảy 1/3 stop, và thêm yêu cầu đúng sáng ở bước đổi sang dù; 4 thử thách còn lại chấm 99–100; chế độ đơn giản tự chuyển đúng; chất lượng cao: sửa pathtrace.js dùng `engine.look` + up cho góc từ trên xuống, và gobo nay nét nhờ coi đèn là nguồn điểm. Script: scratchpad t21.js, t23.js, hq.js) Kiểm tra bù: chạy trọn từng bước cả 18 bài học (mô phỏng thao tác đúng, xác nhận từng bước qua và bài được đánh dấu xong; sửa điều kiện nào quá chặt/lỏng); chấm thử 4 thử thách còn lại (lowkey, bgColour, groupSingle, brightfield) bằng đáp án; thử chế độ chất lượng cao (cửa sổ nhỏ, <60 mẫu) với cỡ cảnh toàn thân, góc máy từ trên xuống và gobo; thử chế độ đơn giản tự chuyển sang đầy đủ ở bài feather/colour và thử thách phông nền.
+- [x] 10b. (xong, bản 8.9; `hist` + `recordHistory()` trong main.js, gọi từ `commit()`; nút ↶ ↷ góc trên trái ảnh, Ctrl/Cmd+Z, Shift+Z; tối đa 60 bước) Hoàn tác / làm lại (undo/redo) cho mọi thay đổi bố cục.
 - [ ] 10c. Bài học từng bước cho sản phẩm (thủy tinh trường sáng/trường tối, kim loại + lều, flat lay từ trên xuống) và cho ảnh thẻ / ảnh hồ sơ.
 - [ ] 10d. Nhận xét ảnh cho sản phẩm (thủy tinh, kim loại, flat lay): lỗi thường gặp + nút sửa.
 

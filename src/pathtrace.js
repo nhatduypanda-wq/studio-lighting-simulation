@@ -90,6 +90,7 @@ export class HighQuality {
         light.target.position.copy(l.target.position);
         scene.add(light.target);
         if (m.id === 'optical' && rig.item && rig.item.gobo && rig.item.gobo !== 'none') {
+          light.radius = 0.004; // the lens focuses the gobo: treat the lamp as a point so the pattern stays sharp
           const dist = 0.35, dir = l.target.position.clone().sub(rig.center).normalize();
           const plate = goboPlate(rig.item.gobo, 2 * dist * Math.tan(l.angle) * 1.2);
           plate.mesh.position.copy(rig.center).addScaledVector(dir, dist);
@@ -106,7 +107,7 @@ export class HighQuality {
     const cam = this.camera = new PhysicalCamera(src.fov, src.aspect, 0.05, 40);
     const ss = sensorSize(ASPECTS[st.aspect] || 1);
     cam.filmGauge = src.aspect >= 1 ? ss.w : ss.h;
-    cam.position.copy(engine.camPos); cam.lookAt(engine.target);
+    cam.position.copy(engine.camPos); if (st.top) cam.up.set(0, 0, -1); cam.lookAt(engine.look || engine.target);
     cam.fStop = st.aperture; cam.apertureBlades = 0;
     cam.focusDistance = engine.camPos.distanceTo(engine.target);
     cam.updateMatrixWorld(true);

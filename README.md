@@ -42,6 +42,7 @@ python3 -m http.server 8080
 - **Thiết bị của tôi và phòng ở nhà** (giai đoạn 9): khai báo đồ đang có để biết dựng được bố cục nào, app tự đổi bố cục sang loại đèn của bạn; phòng nhỏ 3,4 × 4,4 m với hai bố cục ở nhà (cửa sổ + hắt sáng, một speedlight + dù).
 - **Dẫn dắt người mới** (giai đoạn 9): phần giới thiệu 6 bước khi mở app lần đầu; dấu ? cạnh tùy chọn mở giải thích thuật ngữ (21 thuật ngữ); phiếu mang đi chụp dạng PNG (ảnh, sơ đồ, thông số, đồ cần mang).
 - **Cỡ cảnh chọn sẵn** (giai đoạn 9): cận mặt, đầu và vai, nửa người, toàn thân; góc máy thẳng từ trên xuống cho sản phẩm (flat lay).
+- **Hoàn tác / làm lại** (giai đoạn 10): nút ↶ ↷ trên ảnh, hoặc Ctrl/Cmd+Z.
 - **Chế độ đơn giản** (giai đoạn 9): người mới mở app lần đầu chỉ thấy các tùy chọn cơ bản; nút cuối mỗi tab để hiện tất cả.
 - **Thử thách mở rộng** (giai đoạn 9): 16 thử thách dựng lại ánh sáng từ ảnh mẫu — chân dung, phông nền, chụp nhóm, sản phẩm.
 - **Bài học từng bước** (giai đoạn 9): 18 bài, mỗi bài 2–3 bước; app tự đánh dấu khi làm xong từng bước và lưu lại bài đã học.

@@ -15,7 +15,7 @@ import { GEAR_TYPES, GEAR_MODS, defaultGear, missing, adapt } from './gear.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.8';
+const APP_VERSION = '8.9';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -119,6 +119,35 @@ function commit({ env = true, rebuild = false } = {}) {
   if (rebuild) renderPane();
   pending = { env: env || (pending?.env ?? false) };
   save();
+  recordHistory();
+}
+// ---- undo / redo ---------------------------------------------------------------------
+// `stack` holds the setup as it was before each burst of changes (a slider drag is one burst).
+const snapshot = () => JSON.stringify({ ...state, selected: null, view: 'camera' });
+const hist = { stack: [], redo: [], current: snapshot(), time: 0, busy: false };
+function recordHistory() {
+  if (hist.busy) return;
+  const snap = snapshot();
+  if (snap === hist.current) return;
+  const now = Date.now();
+  if (now - hist.time > 600) { hist.stack.push(hist.current); if (hist.stack.length > 60) hist.stack.shift(); }
+  hist.current = snap; hist.time = now; hist.redo.length = 0;
+  updateUndo();
+}
+function restoreHistory(snap) {
+  const st = normalize(JSON.parse(snap)); if (!st) return;
+  const keep = { view: state.view, selected: state.selected };
+  hist.busy = true;
+  state = st; state.view = keep.view; state.selected = state.items.some((i) => i.id === keep.selected) ? keep.selected : (state.items[0]?.id ?? null);
+  setRoom(state.set.room); setBackdrop(state.set); renderChrome(); layout(); commit({ rebuild: true });
+  hist.busy = false; hist.current = snapshot(); hist.time = 0; updateUndo();
+}
+function undo() { if (!hist.stack.length) return; hist.redo.push(snapshot()); restoreHistory(hist.stack.pop()); }
+function redo() { if (!hist.redo.length) return; hist.stack.push(snapshot()); restoreHistory(hist.redo.pop()); }
+function updateUndo() {
+  const u = $('undoBtn'), r = $('redoBtn'); if (!u) return;
+  u.disabled = !hist.stack.length; r.disabled = !hist.redo.length;
+  u.title = t('undo'); r.title = t('redo'); u.setAttribute('aria-label', t('undo')); r.setAttribute('aria-label', t('redo'));
 }
 function flush() {
   requestAnimationFrame(flush);
@@ -870,6 +899,11 @@ function resetAll() {
 }
 $('resetBtn').addEventListener('click', resetAll);
 $('aboutBtn').addEventListener('click', () => $('about').showModal());
+$('undoBtn').addEventListener('click', undo); $('redoBtn').addEventListener('click', redo);
+window.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '') && document.activeElement.type !== 'range' && document.activeElement.type !== 'checkbox') return;
+  e.preventDefault(); if (e.shiftKey) redo(); else undo();
+});
 $('critBtn').addEventListener('click', () => { setTab('lights'); $('critBox')?.scrollIntoView({ block: 'start' }); });
 $('saveBtn').addEventListener('click', async () => {
   const blob = await engine?.snapshot(); if (!blob) return;
