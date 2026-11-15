@@ -155,3 +155,7 @@ dialog button { background: var(--accent); color: var(--accent-ink); border: 0; 
 .lesson ol { margin: 0 0 8px; padding-left: 20px; font-size: 13.5px; -webkit-user-select: text; user-select: text; }
 .lesson ol li { margin-bottom: 4px; }
 .lesson.done h3::after { content: ' ✓'; color: var(--accent); }
+
+details.gear summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+details.gear[open] summary { margin-bottom: 8px; }
+details.gear .items li { padding: 6px 10px; }

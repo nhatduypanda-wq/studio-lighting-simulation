@@ -3,6 +3,7 @@ import { MODEL_META } from './models-meta.js';
 // Units: metres, degrees, lumen-seconds (flash) / lumens (continuous).
 
 export const ROOMS = {
+  home: { w: 3.4, d: 4.4, h: 2.6, zMin: -1.7, zMax: 2.7 },
   small: { w: 4.5, d: 6, h: 2.7, zMin: -2.5, zMax: 3.5 },
   medium: { w: 7, d: 10, h: 3.2, zMin: -4.5, zMax: 5.5 },
   large: { w: 10, d: 14, h: 4.5, zMin: -6, zMax: 8 },
@@ -215,6 +216,15 @@ export const PRESETS = {
   groupSingle: {
     items: () => [makeLight({ mod: 'octa', ...P(-12, 3.0), h: 2.55, stops: -0.3 })],
     subject: { group: 4, formation: 'arc', pose: 'standing', arms: 'down' }, set: { walls: 'white', kind: 'cyc' },
+  },
+  // At home: a small room with white walls, no backdrop, and very little equipment.
+  homeWindow: {
+    items: () => [makeLight({ type: 'window', mod: 'window', ...P(-75, 1.1), h: 1.5, stops: 0 }), makePanel({ size: 'disc80', surface: 'white', ...P(65, 0.7), h: 1.35 })],
+    set: { room: 'home', walls: 'white', kind: 'none', roomLux: 0 }, camera: { aperture: 5.6, shutter: 125, iso: 200, wb: 6000, dist: 1.9 },
+  },
+  homeSpeedlight: {
+    items: () => [makeLight({ type: 'speedlight', mod: 'umb_shoot', ...P(-40, 1.1), h: 1.95, stops: -0.8 }), makePanel({ size: 'disc80', surface: 'white', ...P(65, 0.7), h: 1.35 })],
+    set: { room: 'home', walls: 'white', kind: 'none', roomLux: 0 }, camera: { aperture: 5.6, shutter: 160, iso: 100, wb: 5600, dist: 1.9 },
   },
   // Background: a pool of light behind the subject, and a gelled backdrop.
   bgHalo: {

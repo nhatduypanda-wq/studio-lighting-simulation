@@ -14,6 +14,23 @@ function place(item, T, az, el) {
   item.x = round5(T.x + Math.sin(az * Math.PI / 180) * g); item.z = round5(T.z + Math.cos(az * Math.PI / 180) * g); item.h = round5(h);
 }
 
+// Change the exposure by d stops: shift the given lights by the same amount as far as their
+// power range allows; what is left over goes to the ISO and then the aperture.
+export function shiftExposure(st, ids, d) {
+  const ls = st.items.filter((i) => i.kind === 'light' && ids.includes(i.id));
+  const lamps = () => { if (!ls.length) return; const sh = Math.max(-8 - Math.min(...ls.map((i) => i.stops)), Math.min(-Math.max(...ls.map((i) => i.stops)), d)); for (const i of ls) i.stops = Math.round((i.stops + sh) * 10) / 10; d -= sh; };
+  lamps();
+  const isos = [100, 200, 400, 800, 1600, 3200, 6400], aps = [1.4, 2, 2.8, 4, 5.6, 8, 11, 16, 22];
+  while (Math.abs(d) > 0.5) {
+    const c = st.camera, up = d > 0, ii = isos.indexOf(c.iso), ai = aps.findIndex((a) => Math.abs(a - c.aperture) < 0.3);
+    if (up ? (ii >= 0 && ii < 3) : ii > 0) c.iso = isos[ii + (up ? 1 : -1)];
+    else if (ai >= 0 && (up ? ai > 2 : ai < aps.length - 2)) c.aperture = aps[ai + (up ? -1 : 1)];
+    else break;
+    d += up ? -1 : 1;
+  }
+  lamps();
+}
+
 export function critique(state) {
   const out = [];
   const add = (id, sev, fix, args) => out.push({ id, sev, fix, args });
@@ -36,21 +53,7 @@ export function critique(state) {
   if (!lights.length && !room) { add('noLights', 3); return out; }
   if (Hall <= 0 || Math.log2(Hall * cam.iso / 250 / (cam.aperture * cam.aperture)) < -6) add('noLightOnFace', 3);
   else if (Math.abs(ev) > 0.8 && sub.type !== 'bottle' && !behindOnly) {
-    add(ev > 0 ? 'over' : 'under', Math.abs(ev) > 1.5 ? 3 : 2, (st) => {
-      // shift every light that reaches the subject by the same amount, as far as their range allows;
-      // what is left over goes to the ISO and then the aperture
-      const ls = st.items.filter((i) => read.some((r) => r.item.id === i.id));
-      let d = -ev;
-      if (ls.length) { const sh = Math.max(-8 - Math.min(...ls.map((i) => i.stops)), Math.min(-Math.max(...ls.map((i) => i.stops)), d)); for (const i of ls) i.stops = Math.round((i.stops + sh) * 10) / 10; d -= sh; }
-      const isos = [100, 200, 400, 800, 1600, 3200, 6400], aps = [1.4, 2, 2.8, 4, 5.6, 8, 11, 16, 22];
-      while (Math.abs(d) > 0.5) {
-        const c = st.camera, up = d > 0, ii = isos.indexOf(c.iso), ai = aps.findIndex((a) => Math.abs(a - c.aperture) < 0.3);
-        if (up ? (ii >= 0 && ii < 3) : ii > 0) c.iso = isos[ii + (up ? 1 : -1)];
-        else if (ai >= 0 && (up ? ai > 2 : ai < aps.length - 2)) c.aperture = aps[ai + (up ? -1 : 1)];
-        else break;
-        d += up ? -1 : 1;
-      }
-    }, { s: Math.abs(ev) });
+    add(ev > 0 ? 'over' : 'under', Math.abs(ev) > 1.5 ? 3 : 2, (st) => shiftExposure(st, read.map((r) => r.item.id), -ev), { s: Math.abs(ev) });
   }
 
   const key = read[0];

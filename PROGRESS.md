@@ -43,7 +43,7 @@ Thứ tự: việc khó, cần suy luận nhiều làm trước. Mỗi mục xon
 - [x] 9a. (xong, bản 8.0; `src/critique.js`, hộp `#critBox` ở tab Đèn + nút 💡 trên ảnh) Nhận xét ảnh tự động: phát hiện lỗi thường gặp (hốc mắt tối, không có đốm sáng trong mắt, bóng mũi chạm môi, mặt cháy/thiếu sáng, ánh sáng bẹt, tỉ lệ sáng quá gắt, phông dính bóng, đèn sai màu…) từ hình học + số đo, kèm cách sửa và nút "sửa giúp tôi".
 - [x] 9b. (xong, bản 8.1; `src/coach.js` chứa điều kiện từng bước, khung `#coach` dưới thanh tab, tiến độ lưu ở `sl.lessons.v1`) Bài học từng bước: mỗi bài chia bước, app tự kiểm tra điều kiện từng bước, lưu tiến độ (localStorage).
 - [x] 9c. (xong, bản 8.2; 16 thử thách: 7 chân dung, 4 phông nền, 2 nhóm, 3 sản phẩm; `renderConverged()` làm mới probe 3 lượt trước khi chụp/chấm vì ánh sáng dội hội tụ dần; `assets.pending` trong models.js) Thử thách cho chụp nhóm, sản phẩm và phông nền.
-- [ ] 9d. "Tôi có thiết bị gì": chọn đồ đang có, lọc bố cục làm được; bố cục phòng ở nhà (phòng nhỏ, cửa sổ + hắt sáng).
+- [x] 9d. (xong, bản 8.3; `src/gear.js`: `missing()` lọc bố cục theo thiết bị, `adapt()` đổi loại đèn và giữ độ sáng; thẻ "Thiết bị của tôi" đầu tab Học, lưu ở `sl.gear.v1`; phòng `home` + bố cục homeWindow, homeSpeedlight; bài học/thử thách tự rời phòng `home`) "Tôi có thiết bị gì": chọn đồ đang có, lọc bố cục làm được; bố cục phòng ở nhà (phòng nhỏ, cửa sổ + hắt sáng).
 - [ ] 9e. Chế độ đơn giản (ẩn tùy chọn nâng cao), chuyển qua lại với chế độ đầy đủ.
 - [ ] 9f. Hướng dẫn lần đầu mở app (5–6 bước).
 - [ ] 9g. Giải thích thuật ngữ tại chỗ (stop, f-stop, key, fill, feather, lưới, gel…).

@@ -11,10 +11,11 @@ import { LESSONS, applyLesson } from './lessons.js';
 import { assets } from './models.js';
 import { critique, critiqueSig } from './critique.js';
 import { STEPS, startCoach, advance } from './coach.js';
+import { GEAR_TYPES, GEAR_MODS, defaultGear, missing, adapt } from './gear.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.2';
+const APP_VERSION = '8.3';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -127,12 +128,17 @@ function fitRoom() {
   state.set.backDist = Math.min(state.set.backDist, backMax());
 }
 let critSig = null;
+// the learner's own equipment (null until they fill it in)
+const GEAR_STORE = 'sl.gear.v1';
+let gear = (() => { try { const g = JSON.parse(localStorage.getItem(GEAR_STORE)); return g && GEAR_TYPES.includes(g.type) ? { ...defaultGear(), ...g } : null; } catch { return null; } })();
+function saveGear() { try { if (gear) localStorage.setItem(GEAR_STORE, JSON.stringify(gear)); else localStorage.removeItem(GEAR_STORE); } catch { /* private mode */ } renderChrome(); renderPane(); }
+const leaveHome = () => { if (state.set.room === 'home') { state.set.room = 'medium'; setRoom('medium'); } };
 // step-by-step lesson in progress, and the lessons already completed
 let coach = null;
 const LESSON_STORE = 'sl.lessons.v1';
 const lessonsDone = new Set((() => { try { return JSON.parse(localStorage.getItem(LESSON_STORE)) || []; } catch { return []; } })());
 function startLesson(ls) {
-  applyLesson(state, ls); coach = startCoach(state, ls);
+  leaveHome(); applyLesson(state, ls); coach = startCoach(state, ls);
   $('preset').value = 'custom'; layout(); setTab('lights'); commit({ rebuild: true }); renderCoach();
 }
 function renderCoach() {
@@ -169,19 +175,23 @@ function setPolar(item, d, a) {
   item.z = Math.max(LIMITS.zMin, Math.min(LIMITS.zMax, T.z + Math.cos(r) * d));
 }
 
-function applyPreset(id) {
+function applyPreset(id, mine = false) {
   const p = PRESETS[id]; if (!p) return;
   coach = null; renderCoach();
   state.subject.yaw = 0;
   if (p.subject) Object.assign(state.subject, p.subject);
   if (p.set) Object.assign(state.set, p.set);
+  if (p.set && p.set.room) setRoom(state.set.room);
   const T0 = subjectTarget(state.subject), dy = T0.y - PRESET_FACE_Y;
   state.items = p.items().map((i) => ({ ...i, h: Math.max(0.3, i.h + dy) }));
   if (p.subject && p.subject.type) { Object.assign(state.camera, PRODUCT_CAMERA[p.subject.type], { height: T0.y + 0.14, angle: 0 }); layout(); }
   else if (p.subject && p.subject.group) { if (state.subject.model === 'scan') state.subject.model = 'female'; state.subject.type = 'portrait'; const T1 = subjectTarget(state.subject); Object.assign(state.camera, groupCamera(state.subject, camMax()), { height: T1.y + 0.01, angle: 0 }); layout(); }
   if (p.camera) Object.assign(state.camera, p.camera);
   else Object.assign(state.camera, { aperture: 8, shutter: 160, iso: 100, wb: 5600 });
+  fitRoom();
   state.preset = id;
+  if (mine && gear && adapt(state, gear)) state.preset = 'custom';
+  $('preset').value = state.preset;
   state.selected = state.items[0]?.id ?? null;
   commit({ rebuild: true });
 }
@@ -472,6 +482,7 @@ function renderSettled(minSamples = 32) { // resolves once the live view has ref
 async function startChallenge(id) {
   if (!engine || challengeBusy) return;
   challengeBusy = true;
+  leaveHome();
   const kind = (CHALLENGES.find((c) => c.id === id) || {}).kind || 'portrait';
   state.view = 'camera';
   if (kind === 'portrait' || kind === 'bg') { state.subject.type = 'portrait'; state.subject.group = 1; }
@@ -519,8 +530,37 @@ async function scoreChallenge() {
   renderPane();
 }
 
+function gearCard() {
+  const card = el('details', { class: 'lesson gear' }, el('summary', {}, t('gearTitle')));
+  if (gearOpen) card.open = true;
+  card.addEventListener('toggle', () => { gearOpen = card.open; });
+  card.append(el('p', {}, t('gearIntro')));
+  const g = gear || defaultGear(), upd = (f) => (v) => { gear = gear || defaultGear(); f(v); saveGear(); };
+  card.append(select(t('gearType'), g.type, GEAR_TYPES.map((k) => [k, t('type.' + k)]), upd((v) => { gear.type = v; })));
+  card.append(select(t('gearCount'), String(g.count), [1, 2, 3, 4].map((n) => [String(n), String(n)]), upd((v) => { gear.count = +v; })));
+  for (const k of GEAR_MODS) card.append(check(t('gear.' + k), !!g[k], upd((v) => { gear[k] = v; })));
+  if (!gear) { card.append(el('div', { class: 'btns' }, button(t('gearUse'), 'primary', () => { gear = defaultGear(); saveGear(); }))); return card; }
+  card.append(check(t('gearOnly'), !!gear.only, upd((v) => { gear.only = v; })));
+  const ids = Object.keys(PRESETS), ok = ids.filter((id) => !missing(id, gear).length);
+  card.append(el('p', { class: 'try' }, t('gearCan', { n: ok.length, m: ids.length })));
+  const ul = el('ul', { class: 'items' });
+  for (const id of ok) ul.append(el('li', { onclick: () => { applyPreset(id, true); layout(); setTab('lights'); } }, el('span', { class: 'nm' }, el('div', {}, t('preset.' + id)))));
+  card.append(ul);
+  const no = ids.filter((id) => missing(id, gear).length);
+  if (no.length) {
+    card.append(el('p', { class: 'try' }, t('gearCannot')));
+    const ul2 = el('ul', { class: 'answer' });
+    for (const id of no) ul2.append(el('li', {}, `${t('preset.' + id)} — ${t('gearNeed')} ${missing(id, gear).map((k) => t('gearMiss.' + k)).join(', ')}`));
+    card.append(ul2);
+  }
+  card.append(el('div', { class: 'btns' }, button(t('gearClear'), '', () => { gear = null; saveGear(); })));
+  return card;
+}
+let gearOpen = false;
+
 function paneLearn() {
   const f = document.createDocumentFragment();
+  f.append(gearCard());
   const card = el('div', { class: 'lesson' }, el('h3', {}, t('challenge')), el('p', {}, t('challengeIntro')));
   const pick = el('select', { 'aria-label': t('challenge') });
   CHALLENGES.forEach(({ id, kind }) => { const n = CHALLENGES.filter((c) => c.kind === kind).findIndex((c) => c.id === id) + 1; const o = el('option', { value: id }, `${t('chKind.' + kind)} ${n}`); if (challenge && challenge.id === id) o.selected = true; pick.append(o); });
@@ -578,7 +618,7 @@ function renderChrome() {
   for (const b of $('viewSeg').children) { b.textContent = t('view.' + b.dataset.view); b.classList.toggle('on', b.dataset.view === state.view); }
   $('presetLabel').textContent = t('presets');
   const ps = $('preset'); ps.setAttribute('aria-label', t('presets')); ps.replaceChildren();
-  for (const k of [...Object.keys(PRESETS), 'custom']) ps.append(el('option', { value: k }, t('preset.' + k)));
+  for (const k of [...Object.keys(PRESETS), 'custom']) { const o = el('option', { value: k }, t('preset.' + k)); if (gear && gear.only && k !== 'custom' && missing(k, gear).length) o.disabled = true; ps.append(o); }
   ps.value = state.preset || 'custom';
   $('langBtn').textContent = getLang() === 'vi' ? 'EN' : 'VI';
   $('resetBtn').textContent = t('reset');
