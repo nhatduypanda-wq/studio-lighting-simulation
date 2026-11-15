@@ -15,11 +15,12 @@ import { GEAR_TYPES, GEAR_MODS, defaultGear, missing, adapt } from './gear.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.4';
+const APP_VERSION = '8.5';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
 
+const firstRun = (() => { try { return localStorage.getItem(STORE) === null && !localStorage.getItem('sl.tour.v1'); } catch { return false; } })();
 // Simple mode hides the advanced controls; people opening the app for the first time start in it.
 const MODE_STORE = 'sl.mode.v1';
 let simple = (() => { try { const m = localStorage.getItem(MODE_STORE); return m ? m === 'simple' : localStorage.getItem(STORE) === null; } catch { return false; } })();
@@ -460,6 +461,7 @@ function paneSet() {
     f.append(ul);
   } else f.append(el('p', { class: 'hint' }, t('savedNone')));
   f.append(el('div', { class: 'btns' }, button(t('reset'), 'danger', resetAll), button(t('about'), '', () => $('about').showModal())));
+  f.append(el('div', { class: 'btns' }, button(t('tourAgain'), '', () => tourShow(0))));
   f.append(el('p', { class: 'hint' }, `${t('version')} ${APP_VERSION}`));
   return f;
 }
@@ -570,6 +572,33 @@ function gearCard() {
   return card;
 }
 let gearOpen = false;
+
+// ---- first-run tour: a spotlight on one part of the screen at a time ------------------
+const TOUR = [
+  { key: 'photo', target: () => $('stage') },
+  { key: 'diagram', target: () => (getComputedStyle($('diagramWrap')).display !== 'none' ? $('diagramWrap') : document.querySelector('.tabs button[data-tab=diagram]')) },
+  { key: 'preset', target: () => $('preset') },
+  { key: 'lights', before: () => setTab('lights'), target: () => document.querySelector('.tabs button[data-tab=lights]') },
+  { key: 'crit', before: () => { setTab('lights'); $('critBox')?.scrollIntoView({ block: 'center' }); }, target: () => $('critBox') },
+  { key: 'learn', target: () => document.querySelector('.tabs button[data-tab=learn]') },
+];
+let tourStep = -1;
+function tourShow(i) {
+  const box = $('tour');
+  if (i < 0 || i >= TOUR.length) { tourStep = -1; box.hidden = true; try { localStorage.setItem('sl.tour.v1', '1'); } catch { /* private mode */ } return; }
+  tourStep = i; box.hidden = false;
+  const st = TOUR[i]; if (st.before) st.before();
+  const r = (st.target() || $('stage')).getBoundingClientRect(), hole = $('tourHole'), card = $('tourCard'), pad = 4;
+  Object.assign(hole.style, { left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + 2 * pad}px`, height: `${r.height + 2 * pad}px` });
+  card.textContent = '';
+  card.append(el('div', { class: 'hd' }, `${i + 1} / ${TOUR.length}`), el('p', {}, t('tour.' + st.key)),
+    el('div', { class: 'btns' }, button(t('tourSkip'), '', () => tourShow(-1)), button(t(i === TOUR.length - 1 ? 'tourDone' : 'tourNext'), 'primary', () => tourShow(i + 1))));
+  // put the card where there is room: below the target, else above, else over its lower part
+  const vh = window.innerHeight, vw = window.innerWidth, ch = card.offsetHeight, cw = card.offsetWidth;
+  let top = r.bottom + 12; if (top + ch > vh - 8) top = r.top - ch - 12; if (top < 8) top = Math.max(8, Math.min(vh - ch - 8, r.bottom - ch - 12));
+  card.style.top = `${top}px`; card.style.left = `${Math.max(8, Math.min(vw - cw - 8, r.left + r.width / 2 - cw / 2))}px`;
+}
+window.addEventListener('resize', () => { if (tourStep >= 0) tourShow(tourStep); });
 
 function paneLearn() {
   const f = document.createDocumentFragment();
@@ -926,3 +955,5 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
   navigator.serviceWorker.register('sw.js').then((reg) => reg.update()).catch(() => { /* offline support is optional */ });
 }
+
+if (firstRun) setTimeout(() => tourShow(0), 1500);
