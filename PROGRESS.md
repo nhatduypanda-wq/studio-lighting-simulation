@@ -40,7 +40,7 @@ Ghi chú kỹ thuật:
 
 Thứ tự: việc khó, cần suy luận nhiều làm trước. Mỗi mục xong: thử bằng Playwright (máy tính + điện thoại, vi + en), đánh dấu [x], tăng APP_VERSION và CACHE, commit, push `main`.
 
-- [ ] 9a. Nhận xét ảnh tự động: phát hiện lỗi thường gặp (hốc mắt tối, không có đốm sáng trong mắt, bóng mũi chạm môi, mặt cháy/thiếu sáng, ánh sáng bẹt, tỉ lệ sáng quá gắt, phông dính bóng, đèn sai màu…) từ hình học + số đo, kèm cách sửa và nút "sửa giúp tôi".
+- [x] 9a. (xong, bản 8.0; `src/critique.js`, hộp `#critBox` ở tab Đèn + nút 💡 trên ảnh) Nhận xét ảnh tự động: phát hiện lỗi thường gặp (hốc mắt tối, không có đốm sáng trong mắt, bóng mũi chạm môi, mặt cháy/thiếu sáng, ánh sáng bẹt, tỉ lệ sáng quá gắt, phông dính bóng, đèn sai màu…) từ hình học + số đo, kèm cách sửa và nút "sửa giúp tôi".
 - [ ] 9b. Bài học từng bước: mỗi bài chia bước, app tự kiểm tra điều kiện từng bước, lưu tiến độ (localStorage).
 - [ ] 9c. Thử thách cho chụp nhóm, sản phẩm và phông nền.
 - [ ] 9d. "Tôi có thiết bị gì": chọn đồ đang có, lọc bố cục làm được; bố cục phòng ở nhà (phòng nhỏ, cửa sổ + hắt sáng).

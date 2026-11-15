@@ -130,3 +130,16 @@ dialog button { background: var(--accent); color: var(--accent-ink); border: 0; 
 .lesson img.target { display: block; width: 150px; max-width: 60%; border-radius: 8px; margin: 0 0 8px; border: 1px solid var(--line); }
 .lesson .answer { margin: 0 0 8px; padding-left: 18px; font-size: 13px; color: var(--text); }
 .lesson .row { margin-bottom: 8px; }
+
+.critBtn { position: absolute; left: 10px; bottom: 40px; border: 0; background: rgba(0,0,0,.6); color: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.critBtn.bad { background: rgba(150,40,28,.9); }
+.crit { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; margin: 0 0 14px; }
+.crit h3 { margin: 0 0 8px; font-size: 14px; }
+.crit p { margin: 0; font-size: 13px; -webkit-user-select: text; user-select: text; }
+.crit p.ok { color: var(--dim); }
+.critItem { display: flex; align-items: center; gap: 10px; padding: 8px 0 8px 10px; border-left: 3px solid var(--line); margin: 0 0 8px; }
+.critItem:last-child { margin-bottom: 0; }
+.critItem p { flex: 1; }
+.critItem.sev2 { border-left-color: var(--accent); }
+.critItem.sev3 { border-left-color: var(--danger); }
+.critItem .btn { flex: none; padding: 6px 10px; font-size: 13px; }

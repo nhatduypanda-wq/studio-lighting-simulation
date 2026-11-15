@@ -161,11 +161,11 @@ export const PRESETS = {
     items: () => [
       makeLight({ mod: 'strip', grid: true, ...P(-140, 1.6), h: 1.8, stops: -1.3 }),
       makeLight({ mod: 'strip', grid: true, ...P(140, 1.6), h: 1.8, stops: -1.3 }),
-      makeLight({ mod: 'octa', ...P(15, 1.8), h: 1.9, stops: -3.3 }),
+      makeLight({ mod: 'octa', ...P(15, 1.8), h: 1.9, stops: -1.6 }),
     ],
   },
   hard: {
-    items: () => [makeLight({ mod: 'standard', ...P(-40, 2.2), h: 2.3, stops: -4.7 })],
+    items: () => [makeLight({ mod: 'standard', ...P(-40, 2.2), h: 2.3, stops: -3.2 })],
   },
   // Broad and short lighting: the head is turned; the key lights either the cheek facing the
   // camera (broad, makes a face look wider) or the cheek turned away (short, slimmer, more depth).

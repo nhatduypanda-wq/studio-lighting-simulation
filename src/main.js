@@ -8,10 +8,11 @@ import {
 import { Diagram, LIMITS } from './diagram.js';
 import { MATERIAL_IDS, SHAPE_IDS } from './materials.js';
 import { LESSONS, applyLesson } from './lessons.js';
+import { critique, critiqueSig } from './critique.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '7.1';
+const APP_VERSION = '8.0';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -122,6 +123,7 @@ function fitRoom() {
   state.camera.dist = Math.min(state.camera.dist, camMax());
   state.set.backDist = Math.min(state.set.backDist, backMax());
 }
+let critSig = null;
 const touched = () => { state.preset = 'custom'; $('preset').value = 'custom'; };
 const selected = () => state.items.find((i) => i.id === state.selected) || null;
 const lightCount = () => state.items.filter((i) => i.kind === 'light').length;
@@ -210,6 +212,7 @@ function paneLights() {
   f.append(el('div', { class: 'note', id: 'expoNote' }));
   f.append(el('div', { class: 'note', id: 'groupNote', hidden: true }));
   f.append(el('div', { class: 'note', id: 'bgNote', hidden: true }));
+  critSig = null; f.append(el('div', { class: 'crit', id: 'critBox' }));
   if (!state.items.length) f.append(el('p', { class: 'hint' }, t('noItems')));
   const ul = el('ul', { class: 'items' });
   state.items.forEach((item, i) => {
@@ -615,6 +618,24 @@ function updateReadouts() {
       bn.classList.toggle('bad', b.N >= 0.5 && b.rho > 0.4 && b.lin >= 2.2);
     }
   }
+  // automatic critique: common mistakes with a one-tap fix
+  const list = critique(state), sig = critiqueSig(list) + getLang();
+  const cb = $('critBtn');
+  cb.hidden = state.view !== 'camera' || !list.length;
+  cb.textContent = `💡 ${list.length}`; cb.classList.toggle('bad', list.some((c) => c.sev >= 3));
+  const box = $('critBox');
+  if (box && sig !== critSig) {
+    critSig = sig; box.textContent = '';
+    box.append(el('h3', {}, t('critTitle')));
+    if (!list.length) box.append(el('p', { class: 'ok' }, t('critNone')));
+    for (const c of list.slice(0, 5)) {
+      const args = {}; for (const k in c.args || {}) args[k] = k === 's' ? num(c.args[k], 1) : c.args[k];
+      const row = el('div', { class: 'critItem sev' + c.sev }, el('p', {}, t('crit.' + c.id, args)));
+      if (c.fix) row.append(button(t('critFix'), '', () => { c.fix(state); fitRoom(); touched(); commit({ rebuild: true }); }));
+      box.append(row);
+    }
+    if (list.length > 5) box.append(el('p', { class: 'hint' }, t('critMore', { n: list.length - 5 })));
+  }
   const sync = anyFlash && cam.shutter > SYNC_SPEED;
   const sn = $('syncNote'); if (sn) sn.hidden = !sync;
   $('warn').hidden = !sync; if (sync) $('warn').textContent = t('syncWarn');
@@ -672,6 +693,7 @@ function resetAll() {
 }
 $('resetBtn').addEventListener('click', resetAll);
 $('aboutBtn').addEventListener('click', () => $('about').showModal());
+$('critBtn').addEventListener('click', () => { setTab('lights'); $('critBox')?.scrollIntoView({ block: 'start' }); });
 $('saveBtn').addEventListener('click', async () => {
   const blob = await engine?.snapshot(); if (!blob) return;
   const a = el('a', { href: URL.createObjectURL(blob), download: `studio-light-${Date.now()}.jpg` });
