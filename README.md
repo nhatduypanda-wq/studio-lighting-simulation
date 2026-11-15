@@ -45,7 +45,7 @@ python3 -m http.server 8080
 - **Hoàn tác / làm lại** (giai đoạn 10): nút ↶ ↷ trên ảnh, hoặc Ctrl/Cmd+Z.
 - **Chế độ đơn giản** (giai đoạn 9): người mới mở app lần đầu chỉ thấy các tùy chọn cơ bản; nút cuối mỗi tab để hiện tất cả.
 - **Thử thách mở rộng** (giai đoạn 9): 16 thử thách dựng lại ánh sáng từ ảnh mẫu — chân dung, phông nền, chụp nhóm, sản phẩm.
-- **Bài học từng bước** (giai đoạn 9): 18 bài, mỗi bài 2–3 bước; app tự đánh dấu khi làm xong từng bước và lưu lại bài đã học.
+- **Bài học từng bước** (giai đoạn 9–10): 23 bài, gồm cả thủy tinh trường sáng/trường tối, lều chụp kim loại, flat lay và ảnh thẻ, mỗi bài 2–3 bước; app tự đánh dấu khi làm xong từng bước và lưu lại bài đã học.
 - **Nhận xét ảnh tự động** (giai đoạn 9): app chỉ ra lỗi thường gặp của người mới (dư/thiếu sáng, đèn quá dốc làm tối hốc mắt, ánh sáng bẹt, đèn sau lưng, sai cân bằng trắng, bóng đổ lên phông, ống góc rộng sát mặt…) kèm nút "Sửa giúp tôi".
 - **Ánh sáng trên phông nền** (giai đoạn 8): đo sáng trên phông so với mặt và dự đoán sắc độ (trắng tinh, xám, đen), độ đều hai mép khung; đèn chĩa vào phông và nút thêm đèn phông; năm bài học: một giấy trắng ba sắc độ, phông trắng tinh, quầng sáng, tô màu bằng gel, bóng chủ thể trên phông.
 - **Chụp nhóm** (giai đoạn 7): 2–5 người, đội hình một hàng, vòng cung hoặc hai hàng (hàng trước ngồi); chỉnh khoảng cách giữa người; máy ảnh tự lùi cho vừa khung. Tab Đèn hiển thị độ sáng tại từng khuôn mặt và độ chênh giữa mặt sáng nhất với tối nhất. Hai bố cục mẫu cho nhóm và ba bài học: phủ sáng đều, bóng đổ lên người bên cạnh, độ sâu trường ảnh khi xếp hai hàng.

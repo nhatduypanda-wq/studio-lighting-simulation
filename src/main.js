@@ -15,7 +15,7 @@ import { GEAR_TYPES, GEAR_MODS, defaultGear, missing, adapt } from './gear.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'sl.state.v2';
-const APP_VERSION = '8.9';
+const APP_VERSION = '8.10';
 const MAX_LIGHTS = 5;
 const mobile = matchMedia('(pointer: coarse)').matches;
 const wideMq = matchMedia('(min-width: 860px) and (min-height: 480px)');
@@ -191,7 +191,7 @@ let coach = null;
 const LESSON_STORE = 'sl.lessons.v1';
 const lessonsDone = new Set((() => { try { return JSON.parse(localStorage.getItem(LESSON_STORE)) || []; } catch { return []; } })());
 function startLesson(ls) {
-  if (simple && ['feather', 'colour'].includes(ls.id)) setSimple(false); // these lessons use advanced controls
+  if (simple && ['feather', 'colour', 'tentMetal'].includes(ls.id)) setSimple(false); // these lessons use advanced controls
   leaveHome(); resetAim(); applyLesson(state, ls); coach = startCoach(state, ls);
   $('preset').value = 'custom'; layout(); setTab('lights'); commit({ rebuild: true }); renderCoach();
 }

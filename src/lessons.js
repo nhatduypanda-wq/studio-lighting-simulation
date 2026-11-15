@@ -4,6 +4,7 @@
 import { makeLight, makePanel, P, subjectTarget, groupCamera, PRESET_FACE_Y, PRODUCT_CAMERA } from './data.js';
 
 const L = (o) => makeLight(o), R = (o) => makePanel(o);
+const Y = (type) => subjectTarget({ type }).y; // height of a product on its table
 export const LESSONS = [
   { id: 'inverse', items: () => [L({ mod: 'softbox', ...P(-40, 0.8), h: 1.75, stops: -3.8 })], set: { backDist: 1.5, walls: 'black', backdrop: 'gray', backdropColor: '#777777' } },
   { id: 'size', items: () => [L({ mod: 'standard', ...P(-40, 1.6), h: 2.1, stops: -4 })], set: { walls: 'gray' } },
@@ -30,6 +31,16 @@ export const LESSONS = [
   { id: 'gShadow', subject: { group: 3, formation: 'row', spacing: 0.42 }, items: () => [L({ mod: 'standard', ...P(-68, 2.4), h: 1.65, stops: -3.1 })], set: { walls: 'gray', kind: 'cyc' } },
   { id: 'gDepth', subject: { group: 5, formation: 'rows', spacing: 0.5 }, camera: { aperture: 2.8 },
     items: () => [L({ mod: 'umb_shoot', ...P(-40, 2.6), h: 2.3, stops: -4 }), L({ mod: 'umb_shoot', ...P(40, 2.6), h: 2.3, stops: -4 })], set: { walls: 'gray', kind: 'cyc' } },
+  // products and everyday jobs
+  { id: 'glassBright', abs: true, subject: { type: 'bottle', table: 'white', tent: false }, items: () => [L({ mod: 'softbox', ...P(-35, 0.9), h: Y('bottle') + 0.35, stops: -4 })],
+    set: { walls: 'black', backdrop: 'black', backdropColor: '#0c0c0c', backDist: 2 } },
+  { id: 'glassDark', abs: true, subject: { type: 'bottle', table: 'black', tent: false }, items: () => [L({ mod: 'strip', ...P(-45, 0.8), h: Y('bottle') + 0.35, stops: -3 }), L({ mod: 'strip', ...P(45, 0.8), h: Y('bottle') + 0.35, stops: -3 })],
+    set: { walls: 'black', backdrop: 'black', backdropColor: '#0c0c0c', backDist: 2 } },
+  { id: 'tentMetal', abs: true, subject: { type: 'shaker', table: 'white', tent: false }, items: () => [L({ mod: 'standard', ...P(-80, 1.0), h: Y('shaker') + 0.3, stops: -5.3 }), L({ mod: 'standard', ...P(80, 1.0), h: Y('shaker') + 0.3, stops: -5.3 })],
+    set: { walls: 'black', backdrop: 'white', backdropColor: '#f4f4f2', backDist: 1.5 } },
+  { id: 'flatlay', abs: true, subject: { type: 'fruit', table: 'wood', tent: false }, camera: { top: true, dist: 1.1, focal: 85, aspect: '4:5' }, items: () => [L({ mod: 'softbox', x: 0.12, z: 0.2, h: Y('fruit') + 1.0, stops: -4.3 })],
+    set: { walls: 'black' } },
+  { id: 'idPhoto', items: () => [L({ mod: 'standard', ...P(-45, 1.6), h: 2.0, stops: -4 })], set: { walls: 'white', backdrop: 'white', backdropColor: '#f4f4f2', backDist: 0.5, kind: 'paper' } },
   { id: 'flag', items: () => [L({ mod: 'softbox', ...P(-70, 1.2), h: 1.8, stops: -2.5 }), R({ size: 'vflat', surface: 'black', ...P(80, 0.7), h: 1 })], set: { walls: 'white' } },
 ];
 

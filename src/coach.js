@@ -41,6 +41,15 @@ export const STEPS = {
   gFalloff: [(s) => spread(s) <= 0.7, (s) => spread(s) <= 0.34 && exposed(s, 0.6)],
   gShadow: [L(0, (i, s) => Math.abs(angle(s, i)) <= 20), L(0, (i, s) => Math.abs(angle(s, i)) <= 20 && i.h >= 2.3), L(0, (i, s) => soft(i) && exposed(s, 0.7))],
   gDepth: [(s) => s.camera.aperture >= 8, (s) => s.camera.aperture >= 8 && exposed(s, 0.6)],
+  glassBright: [L(0, (i, s) => Math.abs(angle(s, i)) >= 160 && dist(s, i) >= 0.4 && dist(s, i) <= 1.3), L(0, (i, s, c) => Math.abs(angle(s, i)) >= 160 && i.stops <= c.base[0].stops - 0.8)],
+  glassDark: [L(0, (i, s) => Math.abs(angle(s, i)) >= 125 && Math.abs(angle(s, i)) <= 165), (s, c) => [0, 1].every((n) => { const i = item(s, c, n); return on(i) && Math.abs(angle(s, i)) >= 125 && Math.abs(angle(s, i)) <= 165; }) && angle(s, item(s, c, 0)) * angle(s, item(s, c, 1)) < 0],
+  tentMetal: [(s) => !!s.subject.tent, (s) => !!s.subject.tent && exposed(s, 0.7)],
+  flatlay: [L(0, (i, s) => { const T = subjectTarget(s.subject); return Math.atan2(i.h - T.y, dist(s, i)) * 180 / Math.PI <= 40 && dist(s, i) >= 0.4; }),
+    (s, c) => { const i = item(s, c, 0); return !!i && s.items.some((p) => p.kind === 'panel' && on(p) && p.surface !== 'black' && Math.sign(p.x || 0.001) !== Math.sign(i.x || 0.001) || p.kind === 'panel' && on(p) && p.surface !== 'black' && Math.sign(p.z || 0.001) !== Math.sign(i.z || 0.001)); },
+    L(0, (i, s) => exposed(s, 0.7))],
+  idPhoto: [L(0, (i, s) => soft(i) && exposed(s, 0.7)),
+    (s, c) => { const k = item(s, c, 0); return !!k && s.items.some((o) => o.kind === 'light' && o.id !== k.id && on(o) && o.aim !== 'bg' && Math.sign(o.x) !== Math.sign(k.x) && Math.abs(ratio(s, k, o)) <= 1); },
+    (s) => { const b = meterBackdrop(s); return s.set.backDist >= 1.2 && !!b && Math.max(Math.abs(b.left), Math.abs(b.right)) <= 0.5 && exposed(s, 0.7); }],
   flag: [L(1, (i) => on(i) && i.surface === 'white'), (s, c) => !on(item(s, c, 1))],
 };
 
